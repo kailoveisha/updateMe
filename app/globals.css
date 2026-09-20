@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------
+   UPDATEME — design tokens
+   Ink is a deep printer's blue-black; paper is a cool uncoated white.
+   Kai and Isha each get one spot colour, like a two-colour print job.
+   ------------------------------------------------------------------ */
+@layer base {
+  :root {
+    --ink: 31 42 68;
+    --paper: 241 243 239;
+    --paper-hi: 251 251 249;
+    --paper-lo: 228 232 226;
+    --kai: 11 111 120;
+    --isha: 184 51 106;
+    --marker: 246 196 69;
+    --red: 194 55 45;
+    --moss: 63 164 106;
+
+    /* Fine paper grain, tinted with the ink colour. */
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .12 0 0 0 0 .16 0 0 0 0 .27 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.11'/%3E%3C/svg%3E");
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    height: 100%;
+  }
+
+  body {
+    min-height: 100%;
+    background-color: rgb(var(--paper));
+    background-image: var(--grain);
+    color: rgb(var(--ink));
+    font-family: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
+  }
+
+  ::selection {
+    background: rgb(var(--marker) / 0.6);
+    color: rgb(var(--ink));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ink));
+    outline-offset: 2px;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  textarea,
+  input {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /* Graph paper: used behind the login page. */
+  .paper-grid {
+    background-image:
+      linear-gradient(rgb(var(--ink) / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--ink) / 0.07) 1px, transparent 1px),
+      var(--grain);
+    background-size: 32px 32px, 32px 32px, 180px 180px;
+    background-position: -1px -1px, -1px -1px, 0 0;
+  }
+
+  /* Ruled notebook paper: used behind the conversation. Lines scroll with the messages. */
+  .paper-ruled {
+    background-color: rgb(var(--paper));
+    background-image:
+      linear-gradient(to bottom, transparent 31px, rgb(var(--ink) / 0.075) 31px, rgb(var(--ink) / 0.075) 32px),
+      var(--grain);
+    background-size: 100% 32px, 180px 180px;
+    background-attachment: local, scroll;
+  }
+
+  /* The dark side panel: printed ink with the same grain, lighter. */
+  .paper-ink {
+    background-color: rgb(var(--ink));
+    background-image: var(--grain);
+  }
+
+  /* A torn strip of washi tape. */
+  .tape {
+    background: rgb(var(--marker) / 0.78);
+    clip-path: polygon(2% 0, 98% 0, 100% 14%, 97% 28%, 100% 42%, 97% 56%, 100% 70%, 97% 84%, 99% 100%, 1% 100%, 3% 86%, 0 72%, 3% 58%, 0 44%, 3% 30%, 0 16%);
+    mix-blend-mode: multiply;
+  }
+
+  /* Underline-only input, like a ruled line on a form. */
+  .ruled-input {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1.5px solid rgb(var(--ink) / 0.55);
+    border-radius: 0;
+    padding: 0.35rem 0 0.4rem;
+    font-size: 1.0625rem;
+    line-height: 1.5rem;
+    color: rgb(var(--ink));
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .ruled-input::placeholder {
+    color: rgb(var(--ink) / 0.35);
+  }
+  .ruled-input:hover {
+    border-bottom-color: rgb(var(--ink) / 0.85);
+  }
+  .ruled-input:focus {
+    outline: none;
+    border-bottom-color: rgb(var(--ink));
+    background-color: rgb(var(--marker) / 0.18);
+  }
+
+  /* The scrollbar should feel like part of the page, not a widget. */
+  .thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--ink) / 0.25) transparent;
+  }
+  .thin-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background: rgb(var(--ink) / 0.22);
+    border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,393 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
+import { getBrowserClient } from '@/lib/supabase/client';
+import { describeError, SessionError } from '@/lib/chat/errors';
+import { uploadImage, type PreparedImage } from '@/lib/chat/images';
+import { fetchAfter, fetchPage, insertMessage } from '@/lib/chat/queries';
+import { uuid } from '@/lib/utils';
+import type { ChatMessage, ChatStats, ConnectionState, Failure, MessageRow, NewMessage } from '@/types/chat';
+
+/* ------------------------------------------------------------------ */
+/* State                                                               */
+/* ------------------------------------------------------------------ */
+
+interface State {
+  items: ChatMessage[];
+  hasMore: boolean;
+  stats: ChatStats;
+}
+
+type Action =
+  | { type: 'merge'; rows: MessageRow[]; fresh?: boolean }
+  | { type: 'prepend'; rows: MessageRow[]; hasMore: boolean }
+  | { type: 'pending'; message: ChatMessage }
+  | { type: 'update'; id: string; patch: Partial<ChatMessage> }
+  | { type: 'remove'; id: string };
+
+/** Confirmed messages by server time; unsent ones always sit at the bottom in the order they were written. */
+function compare(a: ChatMessage, b: ChatMessage): number {
+  const aPending = a.status !== 'sent';
+  const bPending = b.status !== 'sent';
+  if (aPending !== bPending) return aPending ? 1 : -1;
+  const at = Date.parse(a.created_at);
+  const bt = Date.parse(b.created_at);
+  if (at !== bt) return at - bt;
+  if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
+  return a.id < b.id ? -1 : 1;
+}
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'merge': {
+      const byId = new Map(state.items.map((m) => [m.id, m]));
+      let added = 0;
+      let addedPhotos = 0;
+      let firstAt = state.stats.firstAt;
+
+      for (const row of action.rows) {
+        const existing = byId.get(row.id);
+        if (existing) {
+          // Same id ⇒ same message: this is the database confirming (or re-announcing) it. Never a duplicate.
+          if (existing.status !== 'sent') {
+            added += 1;
+            if (row.image_path) addedPhotos += 1;
+          }
+          byId.set(row.id, {
+            ...existing,
+            ...row,
+            status: 'sent',
+            progress: undefined,
+            failure: undefined,
+          });
+        } else {
+          byId.set(row.id, { ...row, status: 'sent', fresh: action.fresh });
+          added += 1;
+          if (row.image_path) addedPhotos += 1;
+        }
+        if (!firstAt || Date.parse(row.created_at) < Date.parse(firstAt)) firstAt = row.created_at;
+      }
+
+      return {
+        ...state,
+        items: Array.from(byId.values()).sort(compare),
+        stats: {
+          total: state.stats.total + added,
+          photos: state.stats.photos + addedPhotos,
+          firstAt,
+        },
+      };
+    }
+    case 'prepend': {
+      const byId = new Map(state.items.map((m) => [m.id, m]));
+      for (const row of action.rows) {
+        if (!byId.has(row.id)) byId.set(row.id, { ...row, status: 'sent' });
+      }
+      return { ...state, items: Array.from(byId.values()).sort(compare), hasMore: action.hasMore };
+    }
+    case 'pending':
+      return { ...state, items: [...state.items, action.message].sort(compare) };
+    case 'update':
+      return {
+        ...state,
+        items: state.items.map((m) => (m.id === action.id ? { ...m, ...action.patch } : m)),
+      };
+    case 'remove':
+      return { ...state, items: state.items.filter((m) => m.id !== action.id) };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Hook                                                                */
+/* ------------------------------------------------------------------ */
+
+interface UseChatArgs {
+  myId: string;
+  initial: { messages: MessageRow[]; hasMore: boolean; stats: ChatStats };
+  onSessionExpired: () => void;
+}
+
+interface OutboxEntry {
+  payload: NewMessage;
+  file: PreparedImage | null;
+  uploaded: boolean;
+  refreshedOnce: boolean;
+}
+
+export interface SendInput {
+  body: string;
+  image: PreparedImage | null;
+}
+
+async function accessTokenOf(supabase: SupabaseClient): Promise<string> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session) throw new SessionError();
+  return data.session.access_token;
+}
+
+export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
+  const [state, dispatch] = useReducer(reducer, initial, (seed): State => ({
+    items: seed.messages.map((m) => ({ ...m, status: 'sent' as const })).sort(compare),
+    hasMore: seed.hasMore,
+    stats: seed.stats,
+  }));
+
+  const [realtime, setRealtime] = useState<'connecting' | 'live' | 'reconnecting'>('connecting');
+  const [online, setOnline] = useState(true);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const itemsRef = useRef(state.items);
+  const outbox = useRef(new Map<string, OutboxEntry>());
+  const syncing = useRef(false);
+  const expiredHandler = useRef(onSessionExpired);
+  const hasMoreRef = useRef(state.hasMore);
+
+  useEffect(() => {
+    itemsRef.current = state.items;
+    hasMoreRef.current = state.hasMore;
+    expiredHandler.current = onSessionExpired;
+  });
+
+  /* ---------------- catching up ---------------- */
+
+  /** Fetches anything newer than what we have. Runs on (re)connect, when the tab wakes, and when the network returns. */
+  const syncLatest = useCallback(async () => {
+    if (syncing.current) return;
+    syncing.current = true;
+    try {
+      const supabase = getBrowserClient();
+      const confirmed = itemsRef.current.filter((m) => m.status === 'sent');
+      const newest = confirmed.length > 0 ? confirmed[confirmed.length - 1].created_at : null;
+      if (newest) {
+        const rows = await fetchAfter(supabase, newest);
+        if (rows.length > 0) dispatch({ type: 'merge', rows });
+      } else {
+        const page = await fetchPage(supabase);
+        if (page.rows.length > 0) dispatch({ type: 'merge', rows: page.rows });
+      }
+    } catch {
+      // Still offline or Supabase is having a moment — the next reconnect tries again.
+    } finally {
+      syncing.current = false;
+    }
+  }, []);
+
+  /* ---------------- sending ---------------- */
+
+  const deliver = useCallback(async (id: string): Promise<void> => {
+    const entry = outbox.current.get(id);
+    if (!entry) return;
+
+    try {
+      const supabase = getBrowserClient();
+
+      if (entry.file && !entry.uploaded) {
+        const accessToken = await accessTokenOf(supabase);
+        dispatch({ type: 'update', id, patch: { progress: 0 } });
+        await uploadImage({
+          accessToken,
+          path: entry.payload.image_path as string,
+          blob: entry.file.blob,
+          onProgress: (percent) => dispatch({ type: 'update', id, patch: { progress: percent } }),
+        });
+        entry.uploaded = true;
+      }
+
+      const row = await insertMessage(supabase, entry.payload);
+      outbox.current.delete(id);
+      dispatch({ type: 'merge', rows: [row] });
+    } catch (error) {
+      let failure: Failure = describeError(error);
+
+      if (failure.kind === 'session' && !entry.refreshedOnce) {
+        entry.refreshedOnce = true;
+        const { data } = await getBrowserClient().auth.refreshSession();
+        if (data.session) return deliver(id);
+      }
+      if (failure.kind === 'session') {
+        failure = { kind: 'session', message: 'Your session ended. Sign in again to keep going.' };
+        expiredHandler.current();
+      }
+      dispatch({ type: 'update', id, patch: { status: 'failed', failure, progress: undefined } });
+    }
+  }, []);
+
+  const send = useCallback(
+    ({ body, image }: SendInput) => {
+      const id = uuid();
+      const text = body.trim();
+      const payload: NewMessage = {
+        id,
+        sender_id: myId,
+        body: text.length > 0 ? text : null,
+        image_path: image ? `${myId}/${id}.${image.ext}` : null,
+        image_width: image ? image.width : null,
+        image_height: image ? image.height : null,
+        image_mime: image ? image.mime : null,
+        image_size: image ? image.size : null,
+      };
+      if (!payload.body && !payload.image_path) return;
+
+      outbox.current.set(id, { payload, file: image, uploaded: false, refreshedOnce: false });
+      dispatch({
+        type: 'pending',
+        message: {
+          ...payload,
+          created_at: new Date().toISOString(),
+          status: 'sending',
+          progress: image ? 0 : undefined,
+          localPreviewUrl: image?.previewUrl,
+          fresh: true,
+        },
+      });
+      void deliver(id);
+    },
+    [deliver, myId],
+  );
+
+  const retry = useCallback(
+    (id: string) => {
+      if (!outbox.current.has(id)) return;
+      dispatch({ type: 'update', id, patch: { status: 'sending', failure: undefined } });
+      void deliver(id);
+    },
+    [deliver],
+  );
+
+  const discard = useCallback((id: string) => {
+    const item = itemsRef.current.find((m) => m.id === id);
+    if (!item || item.status === 'sent') return;
+    if (item.localPreviewUrl) URL.revokeObjectURL(item.localPreviewUrl);
+    outbox.current.delete(id);
+    dispatch({ type: 'remove', id });
+  }, []);
+
+  /* ---------------- history ---------------- */
+
+  /** Loads the page of messages before the oldest one on screen. Resolves true if anything was added. */
+  const loadEarlier = useCallback(async (): Promise<boolean> => {
+    if (loadingEarlier || !hasMoreRef.current) return false;
+    const oldest = itemsRef.current.find((m) => m.status === 'sent');
+    if (!oldest) return false;
+
+    setLoadingEarlier(true);
+    setLoadError(null);
+    try {
+      const page = await fetchPage(getBrowserClient(), oldest.created_at);
+      dispatch({ type: 'prepend', rows: page.rows, hasMore: page.hasMore });
+      return page.rows.length > 0;
+    } catch (error) {
+      const failure = describeError(error);
+      setLoadError(failure.kind === 'network' ? "Couldn't load earlier messages. Check your connection." : "Couldn't load earlier messages.");
+      return false;
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }, [loadingEarlier]);
+
+  /* ---------------- realtime ---------------- */
+
+  useEffect(() => {
+    const supabase = getBrowserClient();
+    let channel: RealtimeChannel | null = null;
+    let cancelled = false;
+    let warned = false;
+
+    // Deferred by a tick so React Strict Mode's throw-away first mount never opens a channel.
+    const timer = setTimeout(async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) await supabase.realtime.setAuth(data.session.access_token);
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(`updateme-messages-${uuid()}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+          dispatch({ type: 'merge', rows: [payload.new as MessageRow], fresh: true });
+        })
+        .subscribe((status, error) => {
+          if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+            setRealtime('live');
+            // Covers the gap between the page loading and the subscription starting, and every reconnect.
+            void syncLatest();
+          } else if (
+            status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
+            status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT ||
+            status === REALTIME_SUBSCRIBE_STATES.CLOSED
+          ) {
+            setRealtime('reconnecting');
+            if (!warned && error) {
+              warned = true;
+              console.warn('[Updateme] Realtime is not connected:', error.message);
+            }
+          }
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [syncLatest]);
+
+  /* ---------------- network + tab visibility ---------------- */
+
+  useEffect(() => {
+    setOnline(navigator.onLine);
+
+    const handleOnline = () => {
+      setOnline(true);
+      void syncLatest();
+      // Anything that failed only because the network was down goes out again by itself.
+      for (const item of itemsRef.current) {
+        if (item.status === 'failed' && item.failure?.kind === 'network') retry(item.id);
+      }
+    };
+    const handleOffline = () => setOnline(false);
+    const handleVisible = () => {
+      if (!document.hidden) void syncLatest();
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisible);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisible);
+    };
+  }, [retry, syncLatest]);
+
+  /* ---------------- cleanup of local image previews ---------------- */
+
+  useEffect(
+    () => () => {
+      for (const item of itemsRef.current) {
+        if (item.localPreviewUrl) URL.revokeObjectURL(item.localPreviewUrl);
+      }
+    },
+    [],
+  );
+
+  const connection: ConnectionState = useMemo(() => {
+    if (!online) return 'offline';
+    return realtime;
+  }, [online, realtime]);
+
+  return {
+    items: state.items,
+    hasMore: state.hasMore,
+    stats: state.stats,
+    connection,
+    loadingEarlier,
+    loadError,
+    send,
+    retry,
+    discard,
+    loadEarlier,
+  };
+}
