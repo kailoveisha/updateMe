@@ -4,12 +4,16 @@ import { useRouter } from 'next/navigation';
 import { useId, useState, type FormEvent } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import type { AuthError } from '@supabase/supabase-js';
-import { LOGIN_EMAIL_DOMAIN } from '@/lib/env';
+import { LOGIN_EMAIL_DOMAIN, TURNSTILE_SITE_KEY } from '@/lib/env';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { Spinner } from '@/components/ui/spinner';
+import { Turnstile } from '@/components/ui/turnstile';
 
 function describeAuthError(error: AuthError): string {
   const code = (error.code ?? '').toString();
+  if (code === 'captcha_failed' || /captcha/i.test(error.message)) {
+    return "The security check didn't pass. Wait for it to finish, then try again.";
+  }
   if (error.name === 'AuthRetryableFetchError' || /fetch|network/i.test(error.message)) {
     return "Can't reach Updateme right now. Check your connection and try again.";
   }
@@ -40,10 +44,21 @@ export function LoginForm({ configured }: { configured: boolean }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
+  // Cloudflare Turnstile: a one-time token, refreshed after every attempt.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaRun, setCaptchaRun] = useState(0);
+  const captchaOn = TURNSTILE_SITE_KEY.length > 0;
 
   function fail(message: string) {
     setError(message);
     setShake((n) => n + 1);
+  }
+
+  /** A token works once, so ask Cloudflare for a new one after every attempt. */
+  function refreshCaptcha() {
+    if (!captchaOn) return;
+    setCaptchaToken(null);
+    setCaptchaRun((n) => n + 1);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -54,6 +69,7 @@ export function LoginForm({ configured }: { configured: boolean }) {
     if (!name) return fail('Enter your name.');
     if (!password) return fail('Enter your password.');
     if (!configured) return fail("This site isn't connected to Supabase yet. See the README.");
+    if (captchaOn && !captchaToken) return fail('Wait for the security check to finish, then try again.');
 
     setPending(true);
     setError(null);
@@ -62,10 +78,15 @@ export function LoginForm({ configured }: { configured: boolean }) {
     const email = name.includes('@') ? name : `${name}@${LOGIN_EMAIL_DOMAIN}`;
 
     try {
-      const { error: authError } = await getBrowserClient().auth.signInWithPassword({ email, password });
+      const { error: authError } = await getBrowserClient().auth.signInWithPassword({
+        email,
+        password,
+        options: captchaOn && captchaToken ? { captchaToken } : undefined,
+      });
       if (authError) {
         fail(describeAuthError(authError));
         setPending(false);
+        refreshCaptcha();
         return;
       }
       router.replace('/chat');
@@ -73,6 +94,7 @@ export function LoginForm({ configured }: { configured: boolean }) {
     } catch {
       fail("Can't reach Updateme right now. Check your connection and try again.");
       setPending(false);
+      refreshCaptcha();
     }
   }
 
@@ -135,6 +157,13 @@ export function LoginForm({ configured }: { configured: boolean }) {
           </div>
         </div>
       </div>
+
+      {captchaOn && (
+        <div className="mt-6">
+          <p className="mb-2 text-[13px] font-medium text-ink/65">Quick security check</p>
+          <Turnstile siteKey={TURNSTILE_SITE_KEY} onToken={setCaptchaToken} resetSignal={captchaRun} />
+        </div>
+      )}
 
       <div className="mt-4 min-h-[2.25rem]" aria-live="polite">
         {error && (

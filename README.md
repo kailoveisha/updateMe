@@ -46,6 +46,40 @@ Your conversation is safe: the update only **adds** columns, a storage bucket an
 
 ---
 
+## Security: Cloudflare Turnstile ("verify you're human") + protecting the site
+
+**What this does:** shows Cloudflare's little "verify you're human" box on the sign-in form (and when changing your password). Bots and password-guessing scripts can't pass it, and **Supabase itself checks it**, so it can't be bypassed by skipping the website.
+
+### Turn it on (about 10 minutes) — do the steps in this order
+
+1. **Create the widget in Cloudflare (free).** Sign in at dash.cloudflare.com → **Turnstile** → **Add widget**.
+   - Name: `Updateme`
+   - Hostnames: your site's exact address, e.g. `your-app.vercel.app` (add your own domain later if you get one; add `localhost` only if you test locally)
+   - Widget mode: **Managed**
+   - Copy the **Site Key** (public) and the **Secret Key** (private).
+2. **Give the Site Key to the app.** Vercel → your project → **Settings → Environment Variables** → add `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = the Site Key → then **Redeploy** (the value is baked in at build time, so it needs a new deployment). Open the login page: you should now see "Quick security check".
+3. **Only now, turn it on in Supabase.** Dashboard → **Authentication** → **Attack Protection** (called **Bot and Abuse Protection** in some dashboard versions) → **Enable CAPTCHA protection** → provider **Cloudflare Turnstile** → paste the **Secret Key** → **Save**.
+
+> **Why this order matters:** once Supabase requires the check, a sign-in without it is refused. If you switch Supabase on *before* the site key is deployed, nobody can sign in until you switch it off again (same toggle) or finish step 2.
+
+If the check doesn't appear or says it couldn't load, it is usually an ad blocker, a VPN or a strict network blocking `challenges.cloudflare.com`.
+
+### Why not put Cloudflare "in front of" the whole site?
+
+- **Vercel advises against it.** Vercel's own guidance is not to use a reverse proxy such as Cloudflare's orange-cloud proxy in front of Vercel: it hides traffic from Vercel's protection, adds latency and often causes SSL errors (525 / 526 "invalid configuration"). Cloudflare **DNS only** (grey cloud) is fine.
+- **It wouldn't protect the login anyway.** Sign-ins go from the browser straight to Supabase, not through your website, so a proxy in front of the website never sees them. Turnstile, checked by Supabase, is the layer that does.
+- A proxy also needs your own domain; a `*.vercel.app` address can't be proxied by Cloudflare.
+
+### The rest of the protection, in order of importance
+
+1. **Change the starting passwords now** (Settings → Password), and use long, unique ones. The passwords in `create_users.sql` were written down in the project; if the repo is on GitHub, keep it **Private** and remove the passwords from that file. A bot check stops robots, not someone who knows or guesses the password.
+2. **Sign-ups are off** (Supabase → Authentication → Sign In / Providers → "Allow new users to sign up" off), and the database only lets Kai and Isha in even if they were on.
+3. **Set a minimum password length** of 8–10+ (Supabase → Authentication → Sign In / Providers → Email). Check **Authentication → Rate Limits** too.
+4. **Vercel Firewall** (free on every plan): DDoS protection is automatic. If the site is ever attacked, switch on **Attack Challenge Mode** (Vercel → project → **Firewall**), which shows every visitor a browser check. Hobby projects can also have a few free custom rules.
+5. **Keep the repository private** and never put the Supabase `service_role` / secret key anywhere in this app.
+
+---
+
 ## What you need
 
 - **Node.js 20.9 or newer** (`node -v` to check) — https://nodejs.org
@@ -132,6 +166,7 @@ Open http://localhost:3000, sign in as `kai`, and open a second browser (or a pr
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Your project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | The public anon/publishable key |
 | `NEXT_PUBLIC_LOGIN_EMAIL_DOMAIN` | no | Only if your accounts use a domain other than `updateme.local` |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | no | Cloudflare Turnstile Site Key (public). Turns on the "verify you're human" check. See *Security* above |
 
 ---
 
@@ -162,6 +197,8 @@ Nothing else needs configuring in Supabase: sign-in is by password, so there are
 ---
 
 ## Troubleshooting
+
+**"The security check didn't pass" / can't sign in after enabling CAPTCHA.** Check that the Site Key is in Vercel *and redeployed*, that the widget's Hostnames include your exact site address, and that the Secret Key in Supabase belongs to the *same* widget. To get back in quickly, switch the CAPTCHA toggle off in Supabase.
 
 **“That name and password don't match.”** Run `supabase/create_users.sql` (step 3), and check the password. Names aren't case-sensitive.
 

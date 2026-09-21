@@ -32,3 +32,10 @@ export function isSupabaseConfigured(): boolean {
     return false;
   }
 }
+
+/**
+ * Cloudflare Turnstile ("verify you're human") site key. It is public by design.
+ * Optional: when it isn't set, no check is shown and the app works exactly as before.
+ * (The matching SECRET key goes into Supabase, never into this app.)
+ */
+export const TURNSTILE_SITE_KEY = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim();

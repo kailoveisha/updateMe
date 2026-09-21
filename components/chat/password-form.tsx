@@ -4,12 +4,17 @@ import { useId, useState, type FormEvent } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import type { AuthError } from '@supabase/supabase-js';
 import { Spinner } from '@/components/ui/spinner';
+import { Turnstile } from '@/components/ui/turnstile';
+import { TURNSTILE_SITE_KEY } from '@/lib/env';
 import { getBrowserClient } from '@/lib/supabase/client';
 
 const MIN_LENGTH = 8;
 
 function describe(error: AuthError): string {
   const code = String(error.code ?? '');
+  if (code === 'captcha_failed' || /captcha/i.test(error.message)) {
+    return "The security check didn't pass. Wait for it to finish, then try again.";
+  }
   if (error.name === 'AuthRetryableFetchError' || /fetch|network/i.test(error.message)) {
     return "Can't reach Updateme right now. Check your connection and try again.";
   }
@@ -31,6 +36,9 @@ export function PasswordForm({ email }: { email: string | null }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaRun, setCaptchaRun] = useState(0);
+  const captchaOn = TURNSTILE_SITE_KEY.length > 0;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,13 +51,18 @@ export function PasswordForm({ email }: { email: string | null }) {
     if (next === current) return setError('Your new password must be different from the current one.');
     if (next !== confirm) return setError("The two new passwords don't match.");
     if (!email) return setError("Couldn't find your account email. Sign out and back in, then try again.");
+    if (captchaOn && !captchaToken) return setError('Wait for the security check to finish, then try again.');
 
     setPending(true);
     try {
       const supabase = getBrowserClient();
 
       // Prove it's really you (someone could be borrowing your open screen).
-      const check = await supabase.auth.signInWithPassword({ email, password: current });
+      const check = await supabase.auth.signInWithPassword({
+        email,
+        password: current,
+        options: captchaOn && captchaToken ? { captchaToken } : undefined,
+      });
       if (check.error) {
         setError(
           check.error.code === 'invalid_credentials' || /invalid login/i.test(check.error.message)
@@ -73,6 +86,10 @@ export function PasswordForm({ email }: { email: string | null }) {
       setError("Can't reach Updateme right now. Check your connection and try again.");
     } finally {
       setPending(false);
+      if (captchaOn) {
+        setCaptchaToken(null); // one-time token: get a fresh one for the next attempt
+        setCaptchaRun((n) => n + 1);
+      }
     }
   }
 
@@ -116,6 +133,13 @@ export function PasswordForm({ email }: { email: string | null }) {
         {show ? <EyeOff size={16} strokeWidth={1.6} /> : <Eye size={16} strokeWidth={1.6} />}
         {show ? 'Hide passwords' : 'Show passwords'}
       </button>
+
+      {captchaOn && (
+        <div className="mt-4">
+          <p className="mb-2 text-[13px] font-medium text-ink/65">Quick security check</p>
+          <Turnstile siteKey={TURNSTILE_SITE_KEY} onToken={setCaptchaToken} resetSignal={captchaRun} />
+        </div>
+      )}
 
       <div className="mt-2 min-h-[2.5rem]" aria-live="polite">
         {error && (
