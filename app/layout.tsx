@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
-import { LOOK_COOKIE, lookFromCookie } from '@/lib/chat/theme';
+import { BROWSER_BAR, LOOK_COOKIE, lookFromCookie } from '@/lib/chat/theme';
 
 // Fonts are bundled from npm (no runtime requests to Google).
 import '@fontsource-variable/bodoni-moda/opsz.css';
@@ -19,13 +19,17 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'Updateme', statusBarStyle: 'default' },
 };
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover',
-  interactiveWidget: 'resizes-content',
-  themeColor: '#f1f3ef',
-};
+export async function generateViewport(): Promise<Viewport> {
+  const saved = (await cookies()).get(LOOK_COOKIE)?.value;
+  const palette = saved ? lookFromCookie(saved).palette : 'blueprint';
+  return {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+    interactiveWidget: 'resizes-content',
+    themeColor: BROWSER_BAR[palette],
+  };
+}
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // The chosen paper + colours are remembered in a cookie so the page is drawn correctly from the first paint.

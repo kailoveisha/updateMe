@@ -152,7 +152,7 @@ export function LoginForm({ configured }: { configured: boolean }) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-[2px] bg-ink px-5 text-[15px] font-semibold text-paper-hi shadow-[0_2px_0_rgb(var(--ink)/0.25)] transition duration-150 hover:bg-ink/90 active:translate-y-px active:shadow-none disabled:cursor-wait disabled:opacity-80"
+        className="mt-3 flex h-12 w-full items-center justify-center gap-2.5 rounded-[2px] bg-ink px-5 text-[15px] font-semibold text-paper-hi shadow-[0_2px_0_rgb(var(--shade)/0.25)] transition duration-150 hover:bg-ink/90 active:translate-y-px active:shadow-none disabled:cursor-wait disabled:opacity-80"
       >
         {pending ? (
           <>

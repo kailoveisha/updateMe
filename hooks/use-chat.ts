@@ -6,7 +6,17 @@ import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { describeError, SessionError } from '@/lib/chat/errors';
 import { uploadObject, type PreparedImage } from '@/lib/chat/images';
-import { fetchAfter, fetchBefore, fetchPage, hasOlderThan, insertMessage } from '@/lib/chat/queries';
+import {
+  fetchAfter,
+  fetchBefore,
+  fetchPage,
+  fetchUnsentSince,
+  hasOlderThan,
+  hideMessage,
+  insertMessage,
+  removeFiles,
+  unsendMessage,
+} from '@/lib/chat/queries';
 import { STORAGE_BUCKET, VOICE_BUCKET } from '@/lib/chat/constants';
 import type { PreparedVoice } from '@/lib/chat/voice';
 import { uuid } from '@/lib/utils';
@@ -27,7 +37,13 @@ type Action =
   | { type: 'prepend'; rows: MessageRow[]; hasMore: boolean }
   | { type: 'pending'; message: ChatMessage }
   | { type: 'update'; id: string; patch: Partial<ChatMessage> }
-  | { type: 'remove'; id: string };
+  | { type: 'remove'; id: string }
+  /** A message was unsent for everyone (live event, catch-up, or my own optimistic unsend). */
+  | { type: 'tombstone'; row: MessageRow }
+  /** "Delete for me": take it off this person's screen. */
+  | { type: 'hide'; id: string }
+  /** Put a message back exactly as it was (an unsend or hide failed). */
+  | { type: 'restore'; message: ChatMessage };
 
 /** Confirmed messages by server time; unsent ones always sit at the bottom in the order they were written. */
 function compare(a: ChatMessage, b: ChatMessage): number {
@@ -54,8 +70,13 @@ function reducer(state: State, action: Action): State {
         if (existing) {
           // Same id ⇒ same message: this is the database confirming (or re-announcing) it. Never a duplicate.
           if (existing.status !== 'sent') {
-            added += 1;
-            if (row.image_path) addedPhotos += 1;
+            if (!row.deleted_at) {
+              added += 1;
+              if (row.image_path) addedPhotos += 1;
+            }
+          } else if (row.deleted_at && !existing.deleted_at) {
+            added -= 1;
+            if (existing.image_path) addedPhotos -= 1;
           }
           byId.set(row.id, {
             ...existing,
@@ -66,8 +87,10 @@ function reducer(state: State, action: Action): State {
           });
         } else {
           byId.set(row.id, { ...row, status: 'sent', fresh: action.fresh });
-          added += 1;
-          if (row.image_path) addedPhotos += 1;
+          if (!row.deleted_at) {
+            added += 1;
+            if (row.image_path) addedPhotos += 1;
+          }
         }
         if (!firstAt || Date.parse(row.created_at) < Date.parse(firstAt)) firstAt = row.created_at;
       }
@@ -88,6 +111,49 @@ function reducer(state: State, action: Action): State {
         if (!byId.has(row.id)) byId.set(row.id, { ...row, status: 'sent' });
       }
       return { ...state, items: Array.from(byId.values()).sort(compare), hasMore: action.hasMore };
+    }
+    case 'tombstone': {
+      const existing = state.items.find((m) => m.id === action.row.id);
+      // Not on screen (older than what's loaded, or hidden by me): it will arrive already unsent when it loads.
+      if (!existing || existing.deleted_at || !action.row.deleted_at) return state;
+      return {
+        ...state,
+        items: state.items.map((m) =>
+          m.id === existing.id ? { ...m, ...action.row, status: 'sent', progress: undefined, failure: undefined } : m,
+        ),
+        stats: {
+          ...state.stats,
+          total: Math.max(0, state.stats.total - 1),
+          photos: Math.max(0, state.stats.photos - (existing.image_path ? 1 : 0)),
+        },
+      };
+    }
+    case 'hide': {
+      const existing = state.items.find((m) => m.id === action.id);
+      if (!existing) return state;
+      return {
+        ...state,
+        items: state.items.filter((m) => m.id !== action.id),
+        stats: existing.deleted_at
+          ? state.stats
+          : {
+              ...state.stats,
+              total: Math.max(0, state.stats.total - 1),
+              photos: Math.max(0, state.stats.photos - (existing.image_path ? 1 : 0)),
+            },
+      };
+    }
+    case 'restore': {
+      const present = state.items.find((m) => m.id === action.message.id);
+      const wasCounted = !action.message.deleted_at;
+      const isCounted = present ? !present.deleted_at : false;
+      const delta = wasCounted && !isCounted ? 1 : 0;
+      const photoDelta = delta && action.message.image_path ? 1 : 0;
+      return {
+        ...state,
+        items: [...state.items.filter((m) => m.id !== action.message.id), action.message].sort(compare),
+        stats: { ...state.stats, total: state.stats.total + delta, photos: state.stats.photos + photoDelta },
+      };
     }
     case 'pending':
       return { ...state, items: [...state.items, action.message].sort(compare) };
@@ -148,6 +214,8 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
   const syncing = useRef(false);
   const expiredHandler = useRef(onSessionExpired);
   const hasMoreRef = useRef(state.hasMore);
+  // When we last confirmed we were up to date — used to catch up on unsends missed while offline.
+  const lastSyncAt = useRef(Date.now() - 2 * 60 * 1000);
 
   useEffect(() => {
     itemsRef.current = state.items;
@@ -163,6 +231,7 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
     syncing.current = true;
     try {
       const supabase = getBrowserClient();
+      const startedAt = Date.now();
       const confirmed = itemsRef.current.filter((m) => m.status === 'sent');
       const newest = confirmed.length > 0 ? confirmed[confirmed.length - 1].created_at : null;
       if (newest) {
@@ -172,6 +241,10 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
         const page = await fetchPage(supabase);
         if (page.rows.length > 0) dispatch({ type: 'merge', rows: page.rows });
       }
+      // Older messages may have been unsent while we were away (a 5-minute margin covers clock differences).
+      const unsent = await fetchUnsentSince(supabase, new Date(lastSyncAt.current - 5 * 60 * 1000).toISOString());
+      for (const row of unsent) dispatch({ type: 'tombstone', row });
+      lastSyncAt.current = startedAt;
     } catch {
       // Still offline or Supabase is having a moment — the next reconnect tries again.
     } finally {
@@ -250,6 +323,7 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
         type: 'pending',
         message: {
           ...payload,
+          deleted_at: null,
           created_at: new Date().toISOString(),
           status: 'sending',
           progress: media ? 0 : undefined,
@@ -302,6 +376,81 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
     }
   }, [loadingEarlier]);
 
+  /* ---------------- unsend / delete ---------------- */
+
+  /** Unsend for everyone. Shows the result at once, and puts the message back if it fails. */
+  const unsend = useCallback(
+    async (id: string): Promise<{ ok: true } | { ok: false; message: string }> => {
+      const item = itemsRef.current.find((m) => m.id === id);
+      if (!item || item.status !== 'sent' || item.sender_id !== myId || item.deleted_at) {
+        return { ok: false, message: "This message can't be unsent." };
+      }
+
+      const optimistic: MessageRow = {
+        ...item,
+        body: null,
+        image_path: null,
+        image_width: null,
+        image_height: null,
+        image_mime: null,
+        image_size: null,
+        audio_path: null,
+        audio_duration_ms: null,
+        audio_peaks: null,
+        deleted_at: new Date().toISOString(),
+      };
+      dispatch({ type: 'tombstone', row: optimistic });
+
+      try {
+        const supabase = getBrowserClient();
+        await unsendMessage(supabase, id);
+        // The files are now unused, so they can be removed. A leftover file is harmless if this fails.
+        void removeFiles(supabase, STORAGE_BUCKET, [item.image_path]);
+        void removeFiles(supabase, VOICE_BUCKET, [item.audio_path]);
+        if (item.localPreviewUrl) URL.revokeObjectURL(item.localPreviewUrl);
+        return { ok: true };
+      } catch (error) {
+        dispatch({ type: 'restore', message: item });
+        const failure = describeError(error);
+        return {
+          ok: false,
+          message:
+            failure.kind === 'network'
+              ? "Couldn't unsend. Check your connection and try again."
+              : failure.kind === 'session'
+                ? 'Your session ended. Sign in again to keep going.'
+                : "Couldn't unsend that message. Try again.",
+        };
+      }
+    },
+    [myId],
+  );
+
+  /** Delete for me: the other person still sees it. */
+  const hideForMe = useCallback(
+    async (id: string): Promise<{ ok: true } | { ok: false; message: string }> => {
+      const item = itemsRef.current.find((m) => m.id === id);
+      if (!item || item.status !== 'sent') return { ok: false, message: "This message can't be deleted yet." };
+
+      dispatch({ type: 'hide', id });
+      try {
+        await hideMessage(getBrowserClient(), myId, id);
+        return { ok: true };
+      } catch (error) {
+        dispatch({ type: 'restore', message: item });
+        const failure = describeError(error);
+        return {
+          ok: false,
+          message:
+            failure.kind === 'network'
+              ? "Couldn't delete. Check your connection and try again."
+              : "Couldn't delete that message. Try again.",
+        };
+      }
+    },
+    [myId],
+  );
+
   /**
    * Makes sure the conversation on screen reaches back to `targetCreatedAt` (used when jumping to an old
    * search result). Loads in order, so the list never has holes. Resolves true when the target is loaded.
@@ -348,6 +497,19 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
           dispatch({ type: 'merge', rows: [payload.new as MessageRow], fresh: true });
         })
+        // Someone unsent a message: it turns into an "unsent" note on both screens.
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+          dispatch({ type: 'tombstone', row: payload.new as MessageRow });
+        })
+        // I deleted a message for myself in another tab or device.
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'message_hides', filter: `user_id=eq.${myId}` },
+          (payload) => {
+            const id = (payload.new as { message_id?: string }).message_id;
+            if (id) dispatch({ type: 'hide', id });
+          },
+        )
         .subscribe((status, error) => {
           if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
             setRealtime('live');
@@ -372,7 +534,7 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
       clearTimeout(timer);
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [syncLatest]);
+  }, [syncLatest, myId]);
 
   /* ---------------- network + tab visibility ---------------- */
 
@@ -430,5 +592,7 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
     discard,
     loadEarlier,
     loadUntil,
+    unsend,
+    hideForMe,
   };
 }

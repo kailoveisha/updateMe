@@ -6,7 +6,26 @@ Built with **Next.js**, **TypeScript**, **Tailwind CSS** and **Supabase** (Auth,
 
 ---
 
-## Upgrading an existing deployment (v2: voice notes, themes, search, settings)
+## Upgrading to v3 (unsend messages, Night theme, theme-matched bubbles)
+
+Your conversation is safe: v3 only **adds** things. Nothing is modified or deleted.
+
+1. **Run the SQL first.** Supabase → SQL Editor → New query → paste all of `supabase/migrations/20260922000000_updateme_v3.sql` → Run. *(If you never ran the v2 SQL, run `20260921000000_updateme_v2.sql` first.)*
+2. **Then deploy the new code** (overwrite the files in your GitHub repo; Vercel redeploys). No new environment variables.
+
+> If the new code goes live before the SQL, the chat shows "Couldn't open the chat" until you run it. Nothing is lost.
+
+**What's new in v3**
+
+- **Unsend.** Tap the **⋯** beside any message (it appears on hover on a computer, and is always faintly visible on a phone).
+  - **Delete for me** — removes it from your screen only. The other person still sees it. Works on any message.
+  - **Unsend for everyone** — only on your own messages. The text, photo or voice note is erased from the database and storage, and both screens show a small *"You unsent a message"* note. It happens live on both screens.
+- **Night** — a dark theme, chosen in Settings → Ink. It works with all three papers, and the login page follows it too.
+- **Bubbles follow the theme.** *Lines* = notebook slips with a coloured margin rule. *Dots* = rounded stickers with a hard shadow, a round mic and a rounded text box. *Grid* = framed blueprint labels. Colours follow the ink you picked.
+
+---
+
+## Upgrading from v1 to v2 (voice notes, themes, search, settings)
 
 Your conversation is safe: the update only **adds** columns, a storage bucket and policies. No message or photo is modified or deleted.
 
@@ -23,7 +42,7 @@ Your conversation is safe: the update only **adds** columns, a storage bucket an
 - **Live "writing…" / "recording a voice note…"** — real-time, shown in the header and at the bottom of the chat.
 - **Search** — the magnifier in the header searches every message back to the start; tapping a result jumps to it, even from months ago.
 - **Photo & GIF viewer** — tap any image for a full-screen view. Close with Esc, ✕, tapping outside, or swiping down. Arrow keys / swipe move between photos; Save and Open original included.
-- **Settings** (in the side menu) — choose the paper (dots, lines, grid) and the ink (Blueprint, Graphite, Forest, Plum). Saved to your account, so it follows you to other devices. Each person has their own look. You can also change your password here.
+- **Settings** (in the side menu) — choose the paper (dots, lines, grid) and the ink (Blueprint, Graphite, Forest, Plum, Night). Saved to your account, so it follows you to other devices. Each person has their own look. You can also change your password here.
 
 ---
 
@@ -48,9 +67,9 @@ Open `supabase/migrations/20260920000000_updateme_setup.sql`, paste **all** of i
 
 This creates the tables, the security rules (RLS), a private image bucket, and switches on realtime. It is safe to run more than once, and it never deletes anything.
 
-### 2b. Run the v2 SQL
+### 2b. Run the v2 and v3 SQL
 
-New query → paste all of `supabase/migrations/20260921000000_updateme_v2.sql` → Run. This adds voice notes and saved themes.
+New query → paste all of `supabase/migrations/20260921000000_updateme_v2.sql` → Run (voice notes, saved themes). Then the same for `supabase/migrations/20260922000000_updateme_v3.sql` (unsend / delete).
 
 ### 3. Create the two accounts
 
@@ -130,7 +149,7 @@ Nothing else needs configuring in Supabase: sign-in is by password, so there are
 ## How it works
 
 - **Only two people.** Profiles are created only for the usernames listed in `handle_new_user()` in the SQL. Every table and storage policy requires a profile, so everyone else is locked out at the database level, not just hidden in the interface.
-- **Messages are permanent.** There are no update or delete policies. Signing out only ends your browser session.
+- **Messages are permanent unless someone unsends them.** There are no general edit or delete rights. The *only* way to remove a message is the `unsend_message` function, which works on your own messages only. "Delete for me" just records a private "hidden" note for that person. Signing out never touches messages.
 - **Sending is instant and safe to retry.** The browser generates each message's ID, shows it immediately, and reconciles it with the database copy. A retry can never create a duplicate.
 - **Live updates.** New messages arrive through Supabase Realtime. If the connection drops (or the tab sleeps), the app reconnects and fetches anything it missed, in order.
 - **Voice notes.** Recorded in the browser (max 30 s), converted to a small mono WAV, uploaded to a **private** `chat-voice` bucket with a progress bar, and played through short-lived signed links. The waveform is drawn from a tiny list of loudness values stored with the message.
@@ -156,6 +175,8 @@ Nothing else needs configuring in Supabase: sign-in is by password, so there are
 
 **Can't delete a user in the dashboard.** Deliberate: the database refuses to delete someone who has written messages, so history can't disappear by accident. To reset a test setup, first run `truncate public.messages;`.
 
+**Unsend / delete says "Couldn't unsend" or "Couldn't delete".** Run the v3 SQL (it creates the function and the table these use), then try again.
+
 **Voice notes: "Microphone access is blocked".** Click the padlock in the address bar → allow the microphone for this site. (Voice notes need https, which Vercel provides.)
 
 **Voice notes won't send.** Check that the v2 SQL ran (it creates the `chat-voice` bucket).
@@ -177,7 +198,7 @@ hooks/               use-chat (state, realtime, sending), use-presence, use-sign
 lib/chat/            queries, image processing + upload, error messages, formatting
 lib/supabase/        browser / server / proxy clients
 proxy.ts             keeps sessions fresh; sends signed-out visitors to /login
-supabase/            setup SQL, v2 upgrade SQL, account-creation SQL
+supabase/            setup SQL, v2 + v3 upgrade SQL, account-creation SQL
 ```
 
 Scripts: `npm run dev`, `npm run build`, `npm start`, `npm run typecheck`.

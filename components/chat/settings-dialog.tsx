@@ -44,7 +44,7 @@ export function SettingsDialog({ name, email, look, saveState, onLookChange, onC
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <button type="button" aria-label="Close settings" onClick={onClose} className="animate-fade-in absolute inset-0 cursor-default bg-ink/55" />
+      <button type="button" aria-label="Close settings" onClick={onClose} className="animate-fade-in absolute inset-0 cursor-default bg-scrim/55" />
 
       <div className="animate-pop-in relative flex max-h-[92dvh] w-full max-w-[30rem] flex-col border border-ink/70 bg-paper-hi shadow-sheet sm:-rotate-[0.4deg]">
         <Tape className="-top-2.5 left-10 -rotate-[4deg]" />
@@ -115,7 +115,7 @@ export function SettingsDialog({ name, email, look, saveState, onLookChange, onC
                         <span className="mt-2 block text-[14px] font-semibold leading-none">{paper.label}</span>
                         <span className="mt-1 block text-[12px] leading-tight text-ink/55">{paper.hint}</span>
                         {selected && (
-                          <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center bg-marker text-ink">
+                          <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center bg-marker text-onmarker">
                             <Check size={13} strokeWidth={3} />
                           </span>
                         )}
@@ -129,7 +129,7 @@ export function SettingsDialog({ name, email, look, saveState, onLookChange, onC
                 <h3 id="ink-heading" className="font-display text-[1.15rem] italic">
                   Ink
                 </h3>
-                <div role="radiogroup" aria-labelledby="ink-heading" className="mt-3 grid grid-cols-4 gap-3">
+                <div role="radiogroup" aria-labelledby="ink-heading" className="mt-3 grid grid-cols-5 gap-2.5">
                   {PALETTES.map((palette) => {
                     const selected = look.palette === palette.id;
                     return (
@@ -153,7 +153,7 @@ export function SettingsDialog({ name, email, look, saveState, onLookChange, onC
                         </span>
                         <span className="mt-2 block text-[13.5px] font-semibold leading-none">{palette.label}</span>
                         {selected && (
-                          <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center bg-marker text-ink">
+                          <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center bg-marker text-onmarker">
                             <Check size={13} strokeWidth={3} />
                           </span>
                         )}

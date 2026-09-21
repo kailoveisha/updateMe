@@ -272,7 +272,7 @@ export function Composer({
               disabled={voice.phase !== 'review'}
               aria-label="Send voice note"
               title="Send voice note"
-              className="flex h-11 w-11 shrink-0 items-center justify-center bg-ink text-paper-hi transition duration-150 hover:bg-ink/90 active:translate-y-px disabled:bg-ink/20"
+              className="btn-round flex h-11 w-11 shrink-0 items-center justify-center bg-ink text-paper-hi transition duration-150 hover:bg-ink/90 active:translate-y-px disabled:bg-ink/20"
             >
               <SendHorizontal size={19} strokeWidth={1.8} />
             </button>
@@ -323,7 +323,7 @@ export function Composer({
               aria-label="Message"
               enterKeyHint="enter"
               autoComplete="off"
-              className="thin-scroll block max-h-[168px] min-h-11 w-full resize-none border border-ink/45 bg-paper px-3 py-[0.65rem] text-[15.5px] leading-[1.35] text-ink outline-none transition-[background-color,box-shadow,border-color] duration-150 placeholder:italic placeholder:text-ink/40 hover:border-ink/70 focus:border-ink focus:bg-paper-hi focus:shadow-[inset_0_-3px_0_rgb(var(--marker)/0.85)]"
+              className="field-box thin-scroll block max-h-[168px] min-h-11 w-full resize-none border border-ink/45 bg-paper px-3 py-[0.65rem] text-[15.5px] leading-[1.35] text-ink outline-none transition-[background-color,box-shadow,border-color] duration-150 placeholder:italic placeholder:text-ink/40 hover:border-ink/70 focus:border-ink focus:bg-paper-hi focus:shadow-[inset_0_-3px_0_rgb(var(--marker)/0.85)]"
             />
           </div>
 
@@ -334,7 +334,7 @@ export function Composer({
               disabled={!canSend}
               aria-label="Send"
               title="Send (Enter)"
-              className="flex h-11 w-11 shrink-0 items-center justify-center bg-ink text-paper-hi transition duration-150 hover:bg-ink/90 active:translate-y-px disabled:bg-ink/20 disabled:text-paper-hi/70"
+              className="btn-round flex h-11 w-11 shrink-0 items-center justify-center bg-ink text-paper-hi transition duration-150 hover:bg-ink/90 active:translate-y-px disabled:bg-ink/20 disabled:text-paper-hi/70"
             >
               <span key={flyKey} className={flyKey > 0 ? 'animate-fly' : undefined}>
                 <SendHorizontal size={19} strokeWidth={1.8} />
@@ -346,7 +346,7 @@ export function Composer({
               onClick={() => void voice.start()}
               aria-label="Record a voice note (up to 30 seconds)"
               title="Record a voice note (up to 30 seconds)"
-              className="flex h-11 w-11 shrink-0 items-center justify-center border border-ink bg-paper-hi text-ink transition duration-150 hover:bg-ink hover:text-paper-hi active:translate-y-px"
+              className="btn-round flex h-11 w-11 shrink-0 items-center justify-center border border-ink bg-paper-hi text-ink transition duration-150 hover:bg-ink hover:text-paper-hi active:translate-y-px"
             >
               <Mic size={20} strokeWidth={1.6} />
             </button>

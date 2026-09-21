@@ -183,7 +183,7 @@ export function SearchPanel({ people, onJump, onClose }: Props) {
                           <span className="mt-1.5 block text-[15px] leading-snug text-ink/90 [overflow-wrap:anywhere]">
                             {snippetAround(row.body ?? '', term).map((part, i) =>
                               part.match ? (
-                                <mark key={i} className="bg-marker/70 px-[1px] text-ink">
+                                <mark key={i} className="bg-marker/70 px-[1px] text-onmarker">
                                   {part.text}
                                 </mark>
                               ) : (

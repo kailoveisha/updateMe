@@ -1,7 +1,8 @@
 'use client';
 
 import { memo } from 'react';
-import { AlertCircle, Check, ImageOff, RotateCw } from 'lucide-react';
+import { AlertCircle, Ban, Check, ImageOff, RotateCw } from 'lucide-react';
+import { MessageMenu } from '@/components/chat/message-menu';
 import { VoiceNote } from '@/components/chat/voice-note';
 import { Spinner } from '@/components/ui/spinner';
 import { Tape } from '@/components/ui/tape';
@@ -22,6 +23,8 @@ interface Props {
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
   onOpenImage: (messageId: string) => void;
+  /** Opens the "Delete this message?" choice. */
+  onRequestDelete: (message: ChatMessage) => void;
 }
 
 function RichText({ text }: { text: string }) {
@@ -57,7 +60,7 @@ function ImagePrint({ message, onOpen }: { message: ChatMessage; onOpen: (messag
     <div className="relative" style={{ transform: `rotate(${tilt.toFixed(2)}deg)` }}>
       <Tape className="-top-2 left-1/2 -translate-x-1/2 -rotate-[3deg]" />
       <div
-        className="relative overflow-hidden border border-ink/25 bg-paper-lo"
+        className="print-frame relative overflow-hidden border border-ink/25 bg-paper-lo"
         style={{ aspectRatio: `${width} / ${height}`, maxHeight: '26rem', width: 'min(100%, 22rem)' }}
       >
         {url && !failed ? (
@@ -106,13 +109,23 @@ function ImagePrint({ message, onOpen }: { message: ChatMessage; onOpen: (messag
   );
 }
 
-function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onDiscard, onOpenImage }: Props) {
+function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onDiscard, onOpenImage, onRequestDelete }: Props) {
   const accent = accentClass[accentOf(author)];
   const failed = message.status === 'failed';
   const sending = message.status === 'sending';
+  const unsent = Boolean(message.deleted_at);
   const hasImage = Boolean(message.image_path);
   const hasVoice = Boolean(message.audio_path);
-  const jumbo = !hasImage && !hasVoice && message.body !== null && isEmojiOnly(message.body);
+  const jumbo = !unsent && !hasImage && !hasVoice && message.body !== null && isEmojiOnly(message.body);
+  const settled = message.status === 'sent';
+  const name = author?.display_name ?? 'Someone';
+
+  // The bubble's shape and colours come from the paper + ink the person chose (see globals.css).
+  const bubbleProps = {
+    'data-side': mine ? 'mine' : 'theirs',
+    'data-accent': accentOf(author),
+    'data-flash': flash ? 'true' : undefined,
+  } as const;
 
   return (
     <article
@@ -126,71 +139,72 @@ function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onD
     >
       <div className={cn('flex max-w-[min(34rem,86%)] flex-col', mine ? 'items-end' : 'items-start')}>
         {showLabel && (
-          <p className={cn('mb-1 px-0.5 font-display text-[15px] italic leading-none', accent.text)}>
-            {author?.display_name ?? 'Someone'}
-          </p>
+          <p className={cn('mb-1 px-0.5 font-display text-[15px] italic leading-none', accent.text)}>{name}</p>
         )}
 
-        {jumbo ? (
-          <div className={cn('px-1 text-[2.6rem] leading-[1.15]', sending && 'opacity-60')}>
-            {message.body}
-            <span className="ml-1.5 inline-flex items-center align-middle text-[11px] font-normal text-ink/50">
-              {formatTime(message.created_at)}
-            </span>
-          </div>
-        ) : (
-          <div
-            className={cn(
-              'relative min-w-0 border-ink/70 shadow-slip',
-              accent.slip,
-              hasImage ? 'p-2 pb-1.5' : hasVoice ? 'px-3.5 pb-1.5 pt-3' : 'px-3.5 pb-1.5 pt-2.5',
-              flash && 'animate-flash',
-              mine ? 'border border-r-[3px]' : 'border border-l-[3px]',
-              mine ? 'border-r-current' : accent.rule,
-              mine && accent.text,
-              failed && 'border-dashed',
-              sending && 'opacity-80',
-            )}
-          >
-            <div className="text-ink">
-              {hasImage && <ImagePrint message={message} onOpen={onOpenImage} />}
-              {hasVoice && <VoiceNote message={message} />}
-              {message.body && (
-                <p
-                  className={cn(
-                    'whitespace-pre-wrap break-words text-[15.5px] leading-[1.5]',
-                    hasImage && 'px-1.5 pt-2.5',
-                  )}
-                >
-                  <RichText text={message.body} />
-                </p>
+        <div className={cn('group/row flex items-center gap-1', mine && 'flex-row-reverse')}>
+          {unsent ? (
+            <div {...bubbleProps} className="bubble is-unsent flex min-w-0 items-center gap-2 px-3.5 py-2 text-[14.5px] italic text-ink/60">
+              <Ban size={15} strokeWidth={1.6} aria-hidden className="shrink-0" />
+              <span>{mine ? 'You unsent a message' : `${name} unsent a message`}</span>
+              <time dateTime={message.created_at} className="ml-1 text-[11px] not-italic tabular-nums text-ink/45">
+                {formatTime(message.created_at)}
+              </time>
+            </div>
+          ) : jumbo ? (
+            <div className={cn('px-1 text-[2.6rem] leading-[1.15]', sending && 'opacity-60')}>
+              {message.body}
+              <span className="ml-1.5 inline-flex items-center align-middle text-[11px] font-normal text-ink/50">
+                {formatTime(message.created_at)}
+              </span>
+            </div>
+          ) : (
+            <div
+              {...bubbleProps}
+              className={cn(
+                'bubble min-w-0',
+                hasImage ? 'p-2 pb-1.5' : hasVoice ? 'px-3.5 pb-1.5 pt-3' : 'px-3.5 pb-1.5 pt-2.5',
+                failed && 'is-failed',
+                sending && 'opacity-80',
               )}
+            >
+              <div className="text-ink">
+                {hasImage && <ImagePrint message={message} onOpen={onOpenImage} />}
+                {hasVoice && <VoiceNote message={message} />}
+                {message.body && (
+                  <p className={cn('whitespace-pre-wrap break-words text-[15.5px] leading-[1.5]', hasImage && 'px-1.5 pt-2.5')}>
+                    <RichText text={message.body} />
+                  </p>
+                )}
 
-              <div className="mt-0.5 flex items-center justify-end gap-1.5 text-[11px] leading-5 text-ink/50">
-                {sending && (
-                  <>
-                    <Spinner className="h-3 w-3" />
-                    <span>Sending</span>
-                  </>
-                )}
-                {!sending && !failed && (
-                  <>
-                    <time dateTime={message.created_at} className="tabular-nums">
-                      {formatTime(message.created_at)}
-                    </time>
-                    {mine && <Check size={13} strokeWidth={2} aria-label="Sent" />}
-                  </>
-                )}
-                {failed && (
-                  <span className="inline-flex items-center gap-1 font-medium text-pen">
-                    <AlertCircle size={13} strokeWidth={2} />
-                    Not sent
-                  </span>
-                )}
+                <div className="mt-0.5 flex items-center justify-end gap-1.5 text-[11px] leading-5 text-ink/50">
+                  {sending && (
+                    <>
+                      <Spinner className="h-3 w-3" />
+                      <span>Sending</span>
+                    </>
+                  )}
+                  {!sending && !failed && (
+                    <>
+                      <time dateTime={message.created_at} className="tabular-nums">
+                        {formatTime(message.created_at)}
+                      </time>
+                      {mine && <Check size={13} strokeWidth={2} aria-label="Sent" />}
+                    </>
+                  )}
+                  {failed && (
+                    <span className="inline-flex items-center gap-1 font-medium text-pen">
+                      <AlertCircle size={13} strokeWidth={2} />
+                      Not sent
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {settled && <MessageMenu message={message} mine={mine} side={mine ? 'left' : 'right'} onRequestDelete={onRequestDelete} />}
+        </div>
 
         {failed && (
           <div role="alert" className="mt-1.5 max-w-full text-[13px] leading-snug text-ink/75">
@@ -206,11 +220,7 @@ function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onD
                   Try again
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => onDiscard(message.id)}
-                className="text-ink/60 underline underline-offset-4 hover:text-ink"
-              >
+              <button type="button" onClick={() => onDiscard(message.id)} className="text-ink/60 underline underline-offset-4 hover:text-ink">
                 Discard
               </button>
             </div>

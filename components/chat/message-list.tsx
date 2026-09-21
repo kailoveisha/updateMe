@@ -22,6 +22,7 @@ interface Props {
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
   onOpenImage: (messageId: string) => void;
+  onRequestDelete: (message: ChatMessage) => void;
   /** What the other person is doing right now, if anything. */
   otherActivity: Activity | null;
   /** Scroll to (and highlight) a message. `nonce` lets the same message be targeted twice. */
@@ -47,6 +48,7 @@ export function MessageList({
   onRetry,
   onDiscard,
   onOpenImage,
+  onRequestDelete,
   otherActivity,
   jumpTarget,
   onJumpHandled,
@@ -229,7 +231,7 @@ export function MessageList({
                 row.kind === 'date' ? (
                   <div key={row.key} className="mb-1 mt-7 flex items-center gap-3 first:mt-2" role="separator">
                     <span aria-hidden className="h-px flex-1 border-t border-dashed border-ink/30" />
-                    <span className="-rotate-1 border border-ink/45 bg-paper-hi px-2.5 py-0.5 text-[12.5px] font-medium text-ink/80">
+                    <span className="date-tag border border-ink/45 bg-paper-hi px-2.5 py-0.5 text-[12.5px] font-medium text-ink/80">
                       {row.label}
                     </span>
                     <span aria-hidden className="h-px flex-1 border-t border-dashed border-ink/30" />
@@ -245,6 +247,7 @@ export function MessageList({
                     onRetry={onRetry}
                     onDiscard={onDiscard}
                     onOpenImage={onOpenImage}
+                    onRequestDelete={onRequestDelete}
                   />
                 ),
               )}

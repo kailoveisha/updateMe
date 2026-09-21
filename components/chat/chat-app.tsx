@@ -6,6 +6,7 @@ import { ImagePlus } from 'lucide-react';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { Composer } from '@/components/chat/composer';
 import { ConnectionBanner } from '@/components/chat/connection-banner';
+import { DeleteDialog } from '@/components/chat/delete-dialog';
 import { ImageLightbox } from '@/components/chat/image-lightbox';
 import { MessageList } from '@/components/chat/message-list';
 import { SearchPanel } from '@/components/chat/search-panel';
@@ -18,7 +19,7 @@ import { useIsClient } from '@/hooks/use-is-client';
 import { usePresence } from '@/hooks/use-presence';
 import type { PreparedVoice } from '@/lib/chat/voice';
 import { getBrowserClient } from '@/lib/supabase/client';
-import type { ChatBootstrap, MessageRow, Profile } from '@/types/chat';
+import type { ChatBootstrap, ChatMessage, MessageRow, Profile } from '@/types/chat';
 
 type Ready = Extract<ChatBootstrap, { status: 'ready' }>;
 
@@ -34,6 +35,7 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<ChatMessage | null>(null);
   const [jumpTarget, setJumpTarget] = useState<{ id: string; nonce: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
@@ -100,6 +102,23 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
     [loadUntil, setNotice],
   );
   const clearJump = useCallback(() => setJumpTarget(null), []);
+
+  /* ----- delete for me / unsend for everyone ----- */
+  const { unsend, hideForMe } = chat;
+  const closeDelete = useCallback(() => setDeleting(null), []);
+  const requestDelete = useCallback((message: ChatMessage) => setDeleting(message), []);
+  const runDelete = useCallback(
+    async (kind: 'me' | 'everyone'): Promise<string | null> => {
+      if (!deleting) return null;
+      const result = await (kind === 'me' ? hideForMe(deleting.id) : unsend(deleting.id));
+      if (result.ok) {
+        setDeleting(null);
+        return null;
+      }
+      return result.message;
+    },
+    [deleting, hideForMe, unsend],
+  );
 
   /* ----- photos for the full-screen viewer ----- */
   const photos = useMemo(() => chat.items.filter((m) => m.image_path), [chat.items]);
@@ -189,6 +208,7 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
               onRetry={chat.retry}
               onDiscard={chat.discard}
               onOpenImage={setLightboxId}
+              onRequestDelete={requestDelete}
               otherActivity={otherActivity}
               jumpTarget={jumpTarget}
               onJumpHandled={clearJump}
@@ -222,7 +242,7 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
 
       {menuOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <button type="button" aria-label="Close menu" onClick={closeMenu} className="animate-fade-in absolute inset-0 bg-ink/50" />
+          <button type="button" aria-label="Close menu" onClick={closeMenu} className="animate-fade-in absolute inset-0 bg-scrim/50" />
           <div className="animate-drawer-in absolute inset-y-0 left-0 w-[min(21rem,88vw)] shadow-sheet">{sidebar(closeMenu)}</div>
         </div>
       )}
@@ -235,6 +255,17 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
           saveState={appearance.saveState}
           onLookChange={appearance.setLook}
           onClose={closeSettings}
+        />
+      )}
+
+      {deleting && (
+        <DeleteDialog
+          message={deleting}
+          mine={deleting.sender_id === me.id}
+          otherName={other?.display_name ?? null}
+          onForMe={() => runDelete('me')}
+          onForEveryone={() => runDelete('everyone')}
+          onClose={closeDelete}
         />
       )}
 

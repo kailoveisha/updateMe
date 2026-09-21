@@ -23,11 +23,13 @@ export interface MessageRow {
   audio_duration_ms: number | null;
   /** 0–100 loudness bars for drawing the voice note's waveform. */
   audio_peaks: number[] | null;
+  /** Set when the sender unsent the message for everyone (its content is erased). */
+  deleted_at: string | null;
   created_at: string;
 }
 
 /** What the client is allowed to insert (created_at is set by the database). */
-export type NewMessage = Omit<MessageRow, 'created_at'>;
+export type NewMessage = Omit<MessageRow, 'created_at' | 'deleted_at'>;
 
 export type SendStatus = 'sending' | 'sent' | 'failed';
 

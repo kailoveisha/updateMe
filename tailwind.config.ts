@@ -23,6 +23,9 @@ const config: Config = {
         marker: color('marker'),
         pen: color('red'),
         moss: color('moss'),
+        scrim: color('scrim'),
+        snow: 'rgb(241 243 239 / <alpha-value>)',
+        onmarker: color('on-marker'),
       },
       fontFamily: {
         display: ['"Bodoni Moda Variable"', '"Bodoni 72"', 'Didot', 'Georgia', 'serif'],
@@ -37,8 +40,8 @@ const config: Config = {
         hand: ['"Reenie Beanie"', '"Bradley Hand"', 'cursive'],
       },
       boxShadow: {
-        slip: '0 1px 0 rgb(var(--ink) / 0.07), 0 10px 18px -14px rgb(var(--ink) / 0.5)',
-        sheet: '0 2px 0 rgb(var(--ink) / 0.08), 0 24px 48px -20px rgb(var(--ink) / 0.55)',
+        slip: '0 1px 0 rgb(var(--shade) / 0.07), 0 10px 18px -14px rgb(var(--shade) / 0.5)',
+        sheet: '0 2px 0 rgb(var(--shade) / 0.08), 0 24px 48px -20px rgb(var(--shade) / 0.6)',
       },
       keyframes: {
         'rise-in': {

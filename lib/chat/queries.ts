@@ -2,8 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatStats, MessageRow, NewMessage, Profile } from '@/types/chat';
 import { PAGE_SIZE, SEARCH_PAGE_SIZE } from './constants';
 
+/** Messages as this person may see them: everything except what they deleted for themselves. */
+const VISIBLE = 'messages_visible';
+
 export const MESSAGE_COLUMNS =
-  'id, sender_id, body, image_path, image_width, image_height, image_mime, image_size, audio_path, audio_duration_ms, audio_peaks, created_at';
+  'id, sender_id, body, image_path, image_width, image_height, image_mime, image_size, audio_path, audio_duration_ms, audio_peaks, deleted_at, created_at';
 
 /**
  * The newest PAGE_SIZE messages (or the PAGE_SIZE before `before`), oldest first.
@@ -14,7 +17,7 @@ export async function fetchPage(
   before?: string,
 ): Promise<{ rows: MessageRow[]; hasMore: boolean }> {
   let query = supabase
-    .from('messages')
+    .from(VISIBLE)
     .select(MESSAGE_COLUMNS)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -35,7 +38,7 @@ export async function fetchAfter(supabase: SupabaseClient, after: string): Promi
 
   for (let page = 0; page < 5; page++) {
     const { data, error } = await supabase
-      .from('messages')
+      .from(VISIBLE)
       .select(MESSAGE_COLUMNS)
       .gte('created_at', cursor)
       .order('created_at', { ascending: true })
@@ -87,7 +90,7 @@ export async function insertMessage(supabase: SupabaseClient, message: NewMessag
 
 /** True if any message is older than `iso`. */
 export async function hasOlderThan(supabase: SupabaseClient, iso: string): Promise<boolean> {
-  const { data, error } = await supabase.from('messages').select('id').lt('created_at', iso).limit(1);
+  const { data, error } = await supabase.from(VISIBLE).select('id').lt('created_at', iso).limit(1);
   if (error) throw error;
   return (data ?? []).length > 0;
 }
@@ -98,7 +101,7 @@ export async function hasOlderThan(supabase: SupabaseClient, iso: string): Promi
  */
 export async function fetchBefore(supabase: SupabaseClient, before: string, from: string, limit = 500): Promise<MessageRow[]> {
   const { data, error } = await supabase
-    .from('messages')
+    .from(VISIBLE)
     .select(MESSAGE_COLUMNS)
     .lt('created_at', before)
     .gte('created_at', from)
@@ -118,7 +121,7 @@ export async function searchMessages(
   // Treat the search as plain text: neutralise LIKE wildcards.
   const escaped = term.replace(/[\\%_]/g, (c) => `\\${c}`);
   let query = supabase
-    .from('messages')
+    .from(VISIBLE)
     .select(MESSAGE_COLUMNS)
     .not('body', 'is', null)
     .ilike('body', `%${escaped}%`)
@@ -137,4 +140,44 @@ export async function searchMessages(
 export async function savePreferences(supabase: SupabaseClient, userId: string, preferences: object): Promise<void> {
   const { error } = await supabase.from('profiles').update({ preferences }).eq('id', userId);
   if (error) throw error;
+}
+
+/** Messages unsent since `sinceIso` (used to catch up on unsends missed while offline). */
+export async function fetchUnsentSince(supabase: SupabaseClient, sinceIso: string): Promise<MessageRow[]> {
+  const { data, error } = await supabase
+    .from(VISIBLE)
+    .select(MESSAGE_COLUMNS)
+    .not('deleted_at', 'is', null)
+    .gte('deleted_at', sinceIso)
+    .limit(200);
+  if (error) throw error;
+  return (data ?? []) as unknown as MessageRow[];
+}
+
+/** Unsend for everyone. Only the sender can; the database enforces it. Returns the files that were attached. */
+export async function unsendMessage(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<{ image: string | null; audio: string | null }> {
+  const { data, error } = await supabase.rpc('unsend_message', { p_id: id });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return { image: row?.removed_image ?? null, audio: row?.removed_audio ?? null };
+}
+
+/** Delete for me. The other person still sees the message. Doing it twice is fine. */
+export async function hideMessage(supabase: SupabaseClient, userId: string, messageId: string): Promise<void> {
+  const { error } = await supabase.from('message_hides').insert({ user_id: userId, message_id: messageId });
+  if (error && error.code !== '23505') throw error;
+}
+
+/** Best-effort removal of the files of an unsent message. A leftover file is harmless, so failures are ignored. */
+export async function removeFiles(supabase: SupabaseClient, bucket: string, paths: Array<string | null>): Promise<void> {
+  const list = paths.filter((p): p is string => Boolean(p));
+  if (list.length === 0) return;
+  try {
+    await supabase.storage.from(bucket).remove(list);
+  } catch {
+    /* ignore */
+  }
 }

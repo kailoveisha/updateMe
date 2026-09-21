@@ -90,20 +90,20 @@ export function ImageLightbox({ images, startId, onClose }: Props) {
   const hasPrev = index > 0;
   const hasNext = index < images.length - 1;
   const iconButton =
-    'flex h-11 w-11 items-center justify-center text-paper/85 transition-colors hover:bg-paper/10 hover:text-paper focus-visible:outline-paper';
+    'flex h-11 w-11 items-center justify-center text-snow/85 transition-colors hover:bg-snow/10 hover:text-snow focus-visible:outline-snow';
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Image viewer"
-      className="animate-fade-in fixed inset-0 z-[60] flex flex-col bg-ink/[0.95]"
+      className="animate-fade-in fixed inset-0 z-[60] flex flex-col bg-scrim/[0.95]"
       onClick={onClose}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
       <div className="pt-safe flex items-center gap-1 px-3 pb-2" onClick={(e) => e.stopPropagation()}>
-        <p className="mr-auto pl-1 text-[13.5px] tabular-nums text-paper/70">
+        <p className="mr-auto pl-1 text-[13.5px] tabular-nums text-snow/70">
           {images.length > 1 && (
             <>
               {index + 1} of {images.length}
@@ -112,7 +112,7 @@ export function ImageLightbox({ images, startId, onClose }: Props) {
           {current.image_size ? <span className="ml-3">{formatBytes(current.image_size)}</span> : null}
         </p>
         <button type="button" onClick={save} disabled={!url || saving} aria-label="Save image" title="Save" className={iconButton}>
-          {saving ? <Spinner className="text-paper" /> : <Download size={20} strokeWidth={1.5} />}
+          {saving ? <Spinner className="text-snow" /> : <Download size={20} strokeWidth={1.5} />}
         </button>
         {url && (
           <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open original in a new tab" title="Open original" className={iconButton}>
@@ -147,7 +147,7 @@ export function ImageLightbox({ images, startId, onClose }: Props) {
             alt={current.body ?? 'Shared image'}
             onError={handleError}
             onClick={(e) => e.stopPropagation()}
-            className="animate-pop-in max-h-full max-w-full border-[6px] border-paper-hi bg-paper-hi object-contain shadow-sheet"
+            className="animate-pop-in max-h-full max-w-full border-[6px] border-snow bg-snow object-contain shadow-sheet"
           />
         ) : failed ? (
           <button
@@ -156,13 +156,13 @@ export function ImageLightbox({ images, startId, onClose }: Props) {
               e.stopPropagation();
               retry();
             }}
-            className="flex flex-col items-center gap-2 text-paper/80"
+            className="flex flex-col items-center gap-2 text-snow/80"
           >
             <ImageOff size={30} strokeWidth={1.3} />
             <span className="text-[14px]">Couldn&apos;t load this image. Tap to retry</span>
           </button>
         ) : (
-          <Spinner className="h-6 w-6 text-paper/80" />
+          <Spinner className="h-6 w-6 text-snow/80" />
         )}
 
         {hasNext && (
@@ -181,7 +181,7 @@ export function ImageLightbox({ images, startId, onClose }: Props) {
       </div>
 
       {current.body && (
-        <p className="pb-safe mx-auto max-w-[40rem] px-6 pb-4 text-center text-[14.5px] leading-snug text-paper/80" onClick={(e) => e.stopPropagation()}>
+        <p className="pb-safe mx-auto max-w-[40rem] px-6 pb-4 text-center text-[14.5px] leading-snug text-snow/80" onClick={(e) => e.stopPropagation()}>
           {current.body}
         </p>
       )}

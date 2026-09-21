@@ -20,7 +20,7 @@ export function Monogram({ person, size = 'md', className }: Props) {
     <span
       aria-hidden
       className={cn(
-        'inline-flex shrink-0 -rotate-3 select-none items-center justify-center border border-ink/70 bg-paper-hi font-display italic leading-none shadow-[1px_2px_0_rgb(var(--ink)/0.14)]',
+        'inline-flex shrink-0 -rotate-3 select-none items-center justify-center border border-ink/70 bg-paper-hi font-display italic leading-none shadow-[1px_2px_0_rgb(var(--shade)/0.16)]',
         SIZES[size],
         accentClass[accentOf(person)].text,
         className,

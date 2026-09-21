@@ -13,7 +13,17 @@ export const PALETTES = [
   { id: 'graphite', label: 'Graphite', ink: '38 38 43', paper: '242 242 240' },
   { id: 'forest', label: 'Forest', ink: '28 56 48', paper: '238 243 238' },
   { id: 'plum', label: 'Plum', ink: '58 33 72', paper: '243 240 245' },
+  { id: 'night', label: 'Night', ink: '226 230 242', paper: '19 22 33' },
 ] as const;
+
+/** Colour of the phone's status bar / browser chrome for each palette. */
+export const BROWSER_BAR: Record<string, string> = {
+  blueprint: '#f1f3ef',
+  graphite: '#f2f2f0',
+  forest: '#eef3ee',
+  plum: '#f3f0f5',
+  night: '#131621',
+};
 
 export type PaperId = (typeof PAPERS)[number]['id'];
 export type PaletteId = (typeof PALETTES)[number]['id'];
@@ -52,5 +62,6 @@ export function applyLook(look: Look): void {
   const root = document.documentElement;
   root.dataset.paper = look.paper;
   root.dataset.palette = look.palette;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', BROWSER_BAR[look.palette] ?? '#f1f3ef');
   document.cookie = `${LOOK_COOKIE}=${look.paper}.${look.palette}; path=/; max-age=31536000; SameSite=Lax`;
 }
