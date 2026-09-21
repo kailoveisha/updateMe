@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
 import { BROWSER_BAR, LOOK_COOKIE, lookFromCookie } from '@/lib/chat/theme';
+import { Analytics } from '@vercel/analytics/next';
 
 // Fonts are bundled from npm (no runtime requests to Google).
 import '@fontsource-variable/bodoni-moda/opsz.css';
@@ -39,7 +40,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en" data-paper={look?.paper} data-palette={look?.palette}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
