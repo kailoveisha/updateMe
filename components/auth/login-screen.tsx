@@ -12,7 +12,7 @@ const WORD = 'Updateme'.split('');
 
 export function LoginScreen({ configured, reason }: Props) {
   return (
-    <main className="paper-grid relative flex min-h-dvh flex-col overflow-hidden">
+    <main className="paper-login relative flex min-h-dvh flex-col overflow-hidden">
       <CropMarks />
 
       <div className="relative z-10 mx-auto grid w-full max-w-[1320px] flex-1 grid-cols-1 content-start gap-8 px-8 pb-6 pt-12 sm:px-14 lg:-mb-16 lg:grid-cols-12 lg:gap-6 lg:pt-16">

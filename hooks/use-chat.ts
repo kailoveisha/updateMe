@@ -5,8 +5,10 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { describeError, SessionError } from '@/lib/chat/errors';
-import { uploadImage, type PreparedImage } from '@/lib/chat/images';
-import { fetchAfter, fetchPage, insertMessage } from '@/lib/chat/queries';
+import { uploadObject, type PreparedImage } from '@/lib/chat/images';
+import { fetchAfter, fetchBefore, fetchPage, hasOlderThan, insertMessage } from '@/lib/chat/queries';
+import { STORAGE_BUCKET, VOICE_BUCKET } from '@/lib/chat/constants';
+import type { PreparedVoice } from '@/lib/chat/voice';
 import { uuid } from '@/lib/utils';
 import type { ChatMessage, ChatStats, ConnectionState, Failure, MessageRow, NewMessage } from '@/types/chat';
 
@@ -111,14 +113,16 @@ interface UseChatArgs {
 
 interface OutboxEntry {
   payload: NewMessage;
-  file: PreparedImage | null;
+  /** The photo or voice note that must be uploaded before the message row is written. */
+  media: { bucket: string; path: string; blob: Blob } | null;
   uploaded: boolean;
   refreshedOnce: boolean;
 }
 
 export interface SendInput {
   body: string;
-  image: PreparedImage | null;
+  image?: PreparedImage | null;
+  voice?: PreparedVoice | null;
 }
 
 async function accessTokenOf(supabase: SupabaseClient): Promise<string> {
@@ -184,14 +188,15 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
     try {
       const supabase = getBrowserClient();
 
-      if (entry.file && !entry.uploaded) {
+      if (entry.media && !entry.uploaded) {
         const accessToken = await accessTokenOf(supabase);
         dispatch({ type: 'update', id, patch: { progress: 0 } });
-        await uploadImage({
+        await uploadObject({
+          bucket: entry.media.bucket,
           accessToken,
-          path: entry.payload.image_path as string,
-          blob: entry.file.blob,
-          onProgress: (percent) => dispatch({ type: 'update', id, patch: { progress: percent } }),
+          path: entry.media.path,
+          blob: entry.media.blob,
+          onProgress: (percent: number) => dispatch({ type: 'update', id, patch: { progress: percent } }),
         });
         entry.uploaded = true;
       }
@@ -216,7 +221,7 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
   }, []);
 
   const send = useCallback(
-    ({ body, image }: SendInput) => {
+    ({ body, image = null, voice = null }: SendInput) => {
       const id = uuid();
       const text = body.trim();
       const payload: NewMessage = {
@@ -228,18 +233,27 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
         image_height: image ? image.height : null,
         image_mime: image ? image.mime : null,
         image_size: image ? image.size : null,
+        audio_path: voice ? `${myId}/${id}.${voice.ext}` : null,
+        audio_duration_ms: voice ? voice.durationMs : null,
+        audio_peaks: voice ? voice.peaks : null,
       };
-      if (!payload.body && !payload.image_path) return;
+      if (!payload.body && !payload.image_path && !payload.audio_path) return;
 
-      outbox.current.set(id, { payload, file: image, uploaded: false, refreshedOnce: false });
+      const media = image
+        ? { bucket: STORAGE_BUCKET, path: payload.image_path as string, blob: image.blob }
+        : voice
+          ? { bucket: VOICE_BUCKET, path: payload.audio_path as string, blob: voice.blob }
+          : null;
+
+      outbox.current.set(id, { payload, media, uploaded: false, refreshedOnce: false });
       dispatch({
         type: 'pending',
         message: {
           ...payload,
           created_at: new Date().toISOString(),
           status: 'sending',
-          progress: image ? 0 : undefined,
-          localPreviewUrl: image?.previewUrl,
+          progress: media ? 0 : undefined,
+          localPreviewUrl: image?.previewUrl ?? voice?.previewUrl,
           fresh: true,
         },
       });
@@ -287,6 +301,32 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
       setLoadingEarlier(false);
     }
   }, [loadingEarlier]);
+
+  /**
+   * Makes sure the conversation on screen reaches back to `targetCreatedAt` (used when jumping to an old
+   * search result). Loads in order, so the list never has holes. Resolves true when the target is loaded.
+   */
+  const loadUntil = useCallback(async (targetCreatedAt: string): Promise<boolean> => {
+    const supabase = getBrowserClient();
+    let oldest = itemsRef.current.find((m) => m.status === 'sent')?.created_at;
+    if (!oldest) return false;
+    if (Date.parse(targetCreatedAt) >= Date.parse(oldest)) return true;
+
+    try {
+      for (let batch = 0; batch < 20; batch++) {
+        const rows = await fetchBefore(supabase, oldest, targetCreatedAt);
+        if (rows.length === 0) break;
+        oldest = rows[rows.length - 1].created_at;
+        dispatch({ type: 'prepend', rows: rows.slice().reverse(), hasMore: true });
+        if (rows.length < 500) break;
+      }
+      const more = await hasOlderThan(supabase, oldest).catch(() => true);
+      dispatch({ type: 'prepend', rows: [], hasMore: more });
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   /* ---------------- realtime ---------------- */
 
@@ -389,5 +429,6 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
     retry,
     discard,
     loadEarlier,
+    loadUntil,
   };
 }

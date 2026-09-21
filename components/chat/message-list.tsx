@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { EmptyState } from '@/components/chat/empty-state';
-import { MessageItem, type OpenImage } from '@/components/chat/message-item';
+import { MessageItem } from '@/components/chat/message-item';
+import { TypingNote } from '@/components/chat/typing-note';
 import { Spinner } from '@/components/ui/spinner';
 import { GROUP_WINDOW_MS } from '@/lib/chat/constants';
 import { dayKey, dayLabel } from '@/lib/chat/format';
-import type { ChatMessage, Profile } from '@/types/chat';
+import type { Activity, ChatMessage, Profile } from '@/types/chat';
 
 interface Props {
   messages: ChatMessage[];
@@ -20,7 +21,12 @@ interface Props {
   onLoadEarlier: () => Promise<boolean>;
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
-  onOpenImage: (image: OpenImage) => void;
+  onOpenImage: (messageId: string) => void;
+  /** What the other person is doing right now, if anything. */
+  otherActivity: Activity | null;
+  /** Scroll to (and highlight) a message. `nonce` lets the same message be targeted twice. */
+  jumpTarget: { id: string; nonce: number } | null;
+  onJumpHandled: () => void;
 }
 
 type Row =
@@ -41,17 +47,22 @@ export function MessageList({
   onRetry,
   onDiscard,
   onOpenImage,
+  otherActivity,
+  jumpTarget,
+  onJumpHandled,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restore = useRef<{ height: number; top: number } | null>(null);
   const prevFirst = useRef<string | null>(null);
   const prevLast = useRef<string | null>(null);
 
   const [unseen, setUnseen] = useState(0);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
+  const [flashId, setFlashId] = useState<string | null>(null);
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
@@ -96,6 +107,26 @@ export function MessageList({
     prevFirst.current = first;
     prevLast.current = last;
   }, [messages, meId]);
+
+  /* ----- jump to a message (from search) ----- */
+  useEffect(() => {
+    if (!jumpTarget) return;
+    const el = scrollRef.current?.querySelector<HTMLElement>(`[data-mid="${jumpTarget.id}"]`);
+    if (!el) return; // not rendered yet — this runs again when the messages update
+    stickToBottom.current = false;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setFlashId(jumpTarget.id);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlashId(null), 2000);
+    onJumpHandled();
+  }, [jumpTarget, messages, onJumpHandled]);
+
+  useEffect(
+    () => () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
 
   /* Images loading, the composer growing, or the phone keyboard opening all change heights. */
   useEffect(() => {
@@ -159,7 +190,7 @@ export function MessageList({
         role="log"
         aria-live="polite"
         aria-label="Conversation"
-        className="paper-ruled thin-scroll absolute inset-0 overflow-y-auto overscroll-contain"
+        className="paper-sheet thin-scroll absolute inset-0 overflow-y-auto overscroll-contain"
       >
         <div ref={contentRef} className="mx-auto flex min-h-full w-full max-w-[52rem] flex-col px-4 pb-6 pt-6 sm:px-8">
           {isEmpty ? (
@@ -210,14 +241,17 @@ export function MessageList({
                     mine={row.message.sender_id === meId}
                     author={peopleById.get(row.message.sender_id) ?? null}
                     showLabel={row.showLabel}
+                    flash={flashId === row.message.id}
                     onRetry={onRetry}
                     onDiscard={onDiscard}
                     onOpenImage={onOpenImage}
                   />
                 ),
               )}
+              {otherActivity && otherName && <TypingNote name={otherName} activity={otherActivity} />}
             </>
           )}
+          {isEmpty && otherActivity && otherName && <TypingNote name={otherName} activity={otherActivity} />}
         </div>
       </div>
 

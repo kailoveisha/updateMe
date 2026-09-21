@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
+import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
+import { LOOK_COOKIE, lookFromCookie } from '@/lib/chat/theme';
 
 // Fonts are bundled from npm (no runtime requests to Google).
 import '@fontsource-variable/bodoni-moda/opsz.css';
@@ -25,9 +27,14 @@ export const viewport: Viewport = {
   themeColor: '#f1f3ef',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // The chosen paper + colours are remembered in a cookie so the page is drawn correctly from the first paint.
+  // Until someone picks a look, no attributes are set and the built-in defaults (lines, Blueprint) apply.
+  const saved = (await cookies()).get(LOOK_COOKIE)?.value;
+  const look = saved ? lookFromCookie(saved) : null;
+
   return (
-    <html lang="en">
+    <html lang="en" data-paper={look?.paper} data-palette={look?.palette}>
       <body>{children}</body>
     </html>
   );

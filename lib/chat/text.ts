@@ -37,3 +37,26 @@ export function splitLinks(text: string): TextPart[] {
   if (last < text.length) parts.push({ type: 'text', value: text.slice(last) });
   return parts;
 }
+
+export interface SnippetPart {
+  text: string;
+  match: boolean;
+}
+
+/** A short excerpt of `text` around the first occurrence of `term`, with every occurrence marked. */
+export function snippetAround(text: string, term: string, radius = 68): SnippetPart[] {
+  const needle = term.trim();
+  const flat = text.replace(/\s+/g, ' ');
+  if (!needle) return [{ text: flat.slice(0, radius * 2), match: false }];
+
+  const index = flat.toLowerCase().indexOf(needle.toLowerCase());
+  const start = index < 0 ? 0 : Math.max(0, index - radius);
+  const end = Math.min(flat.length, (index < 0 ? 0 : index) + needle.length + radius);
+  const excerpt = `${start > 0 ? '…' : ''}${flat.slice(start, end)}${end < flat.length ? '…' : ''}`;
+
+  const pattern = new RegExp(`(${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return excerpt
+    .split(pattern)
+    .filter((part) => part.length > 0)
+    .map((part) => ({ text: part, match: part.toLowerCase() === needle.toLowerCase() }));
+}

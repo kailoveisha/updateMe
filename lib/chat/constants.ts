@@ -19,3 +19,15 @@ export const SIGNED_URL_SECONDS = 60 * 60;
 
 /** Messages from the same person within this window share one name label. */
 export const GROUP_WINDOW_MS = 10 * 60 * 1000;
+
+/** Voice notes */
+export const VOICE_BUCKET = 'chat-voice';
+export const MAX_VOICE_MS = 30_000;
+export const MIN_VOICE_MS = 800;
+/** Voice notes are stored as small mono WAV files, which play on every device. */
+export const VOICE_SAMPLE_RATE = 24_000;
+export const PEAK_COUNT = 48;
+
+/** Search */
+export const SEARCH_PAGE_SIZE = 25;
+export const SEARCH_MIN_CHARS = 2;

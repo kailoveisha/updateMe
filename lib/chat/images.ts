@@ -151,6 +151,7 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
 }
 
 interface UploadArgs {
+  bucket?: string;
   accessToken: string;
   path: string;
   blob: Blob;
@@ -158,13 +159,13 @@ interface UploadArgs {
 }
 
 /**
- * Uploads to Supabase Storage with real progress events.
+ * Uploads a photo or voice note to Supabase Storage with real progress events.
  * (supabase-js's own upload() has no progress callback, so this talks to the same
  * REST endpoint directly, using the signed-in user's token — RLS still applies.)
  */
-export function uploadImage({ accessToken, path, blob, onProgress }: UploadArgs): Promise<void> {
+export function uploadObject({ bucket = STORAGE_BUCKET, accessToken, path, blob, onProgress }: UploadArgs): Promise<void> {
   return new Promise((resolve, reject) => {
-    const endpoint = `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${path
+    const endpoint = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path
       .split('/')
       .map(encodeURIComponent)
       .join('/')}`;
@@ -209,15 +210,15 @@ export function uploadImage({ accessToken, path, blob, onProgress }: UploadArgs)
       } else if (code === 401 || /jwt/i.test(text)) {
         reject(new UploadError('Your session ended. Sign in again to keep going.', 'session'));
       } else if (code === 403 || /row-level security|unauthorized/i.test(text)) {
-        reject(new UploadError("This account isn't allowed to upload images here.", 'rejected'));
+        reject(new UploadError("This account isn't allowed to upload here.", 'rejected'));
       } else if (code === 404 || /bucket not found/i.test(text)) {
-        reject(new UploadError("The image storage isn't set up yet. Run the SQL from the README in Supabase.", 'setup'));
+        reject(new UploadError("File storage isn't set up yet. Run the SQL from the README in Supabase.", 'setup'));
       } else if (code === 413 || /too large|exceeded/i.test(text)) {
-        reject(new UploadError('That image is too large to upload.', 'rejected'));
+        reject(new UploadError('That file is too large to upload.', 'rejected'));
       } else if (code === 415 || /mime/i.test(text)) {
-        reject(new UploadError('That image type is not supported.', 'rejected'));
+        reject(new UploadError('That file type is not supported.', 'rejected'));
       } else {
-        reject(new UploadError("The image couldn't be uploaded. Try again.", 'unknown'));
+        reject(new UploadError("The file couldn't be uploaded. Try again.", 'unknown'));
       }
     };
 

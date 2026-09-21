@@ -61,6 +61,14 @@ const config: Config = {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(0)' },
         },
+        'bounce-dot': {
+          '0%, 70%, 100%': { transform: 'translateY(0)', opacity: '0.45' },
+          '35%': { transform: 'translateY(-5px)', opacity: '1' },
+        },
+        flash: {
+          '0%': { boxShadow: '0 0 0 0 rgb(var(--marker) / 0)', backgroundColor: 'rgb(var(--marker) / 0.75)' },
+          '100%': { boxShadow: '0 0 0 0 rgb(var(--marker) / 0)', backgroundColor: 'rgb(var(--marker) / 0)' },
+        },
         shake: {
           '0%, 100%': { transform: 'translateX(0)' },
           '20%': { transform: 'translateX(-5px)' },
@@ -81,6 +89,8 @@ const config: Config = {
         'fade-in': 'fade-in 0.2s ease-out both',
         'pop-in': 'pop-in 0.16s ease-out both',
         'drawer-in': 'drawer-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        'bounce-dot': 'bounce-dot 1.1s ease-in-out infinite',
+        flash: 'flash 1.8s ease-out backwards',
         shake: 'shake 0.4s ease-in-out',
         fly: 'fly 0.4s ease-in-out',
       },

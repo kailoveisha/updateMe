@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatStats, MessageRow, NewMessage, Profile } from '@/types/chat';
-import { PAGE_SIZE } from './constants';
+import { PAGE_SIZE, SEARCH_PAGE_SIZE } from './constants';
 
 export const MESSAGE_COLUMNS =
-  'id, sender_id, body, image_path, image_width, image_height, image_mime, image_size, created_at';
+  'id, sender_id, body, image_path, image_width, image_height, image_mime, image_size, audio_path, audio_duration_ms, audio_peaks, created_at';
 
 /**
  * The newest PAGE_SIZE messages (or the PAGE_SIZE before `before`), oldest first.
@@ -52,7 +52,7 @@ export async function fetchAfter(supabase: SupabaseClient, after: string): Promi
 }
 
 export async function fetchProfiles(supabase: SupabaseClient): Promise<Profile[]> {
-  const { data, error } = await supabase.from('profiles').select('id, username, display_name');
+  const { data, error } = await supabase.from('profiles').select('id, username, display_name, preferences');
   if (error) throw error;
   return (data ?? []) as Profile[];
 }
@@ -83,4 +83,58 @@ export async function insertMessage(supabase: SupabaseClient, message: NewMessag
     throw existing.error;
   }
   throw error;
+}
+
+/** True if any message is older than `iso`. */
+export async function hasOlderThan(supabase: SupabaseClient, iso: string): Promise<boolean> {
+  const { data, error } = await supabase.from('messages').select('id').lt('created_at', iso).limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Messages from `from` (inclusive) up to `before` (exclusive), newest first, one batch at a time.
+ * Used to load everything between an old search result and the messages already on screen.
+ */
+export async function fetchBefore(supabase: SupabaseClient, before: string, from: string, limit = 500): Promise<MessageRow[]> {
+  const { data, error } = await supabase
+    .from('messages')
+    .select(MESSAGE_COLUMNS)
+    .lt('created_at', before)
+    .gte('created_at', from)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as MessageRow[];
+}
+
+/** Text search across the whole conversation, newest matches first. */
+export async function searchMessages(
+  supabase: SupabaseClient,
+  term: string,
+  before?: string,
+): Promise<{ rows: MessageRow[]; hasMore: boolean }> {
+  // Treat the search as plain text: neutralise LIKE wildcards.
+  const escaped = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+  let query = supabase
+    .from('messages')
+    .select(MESSAGE_COLUMNS)
+    .not('body', 'is', null)
+    .ilike('body', `%${escaped}%`)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(SEARCH_PAGE_SIZE + 1);
+  if (before) query = query.lt('created_at', before);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as MessageRow[];
+  return { rows: rows.slice(0, SEARCH_PAGE_SIZE), hasMore: rows.length > SEARCH_PAGE_SIZE };
+}
+
+/** Saves this person's appearance. Only their own row can be changed (enforced by the database). */
+export async function savePreferences(supabase: SupabaseClient, userId: string, preferences: object): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ preferences }).eq('id', userId);
+  if (error) throw error;
 }

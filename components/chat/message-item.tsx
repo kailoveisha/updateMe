@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import { AlertCircle, Check, ImageOff, RotateCw } from 'lucide-react';
+import { VoiceNote } from '@/components/chat/voice-note';
 import { Spinner } from '@/components/ui/spinner';
 import { Tape } from '@/components/ui/tape';
 import { useSignedUrl } from '@/hooks/use-signed-url';
@@ -11,21 +12,16 @@ import { isEmojiOnly, splitLinks } from '@/lib/chat/text';
 import { cn, seeded } from '@/lib/utils';
 import type { ChatMessage, Profile } from '@/types/chat';
 
-export interface OpenImage {
-  src: string;
-  width: number;
-  height: number;
-  alt: string;
-}
-
 interface Props {
   message: ChatMessage;
   mine: boolean;
   author: Profile | null;
   showLabel: boolean;
+  /** Briefly highlight this message (after jumping to it from a search). */
+  flash: boolean;
   onRetry: (id: string) => void;
   onDiscard: (id: string) => void;
-  onOpenImage: (image: OpenImage) => void;
+  onOpenImage: (messageId: string) => void;
 }
 
 function RichText({ text }: { text: string }) {
@@ -50,7 +46,7 @@ function RichText({ text }: { text: string }) {
   );
 }
 
-function ImagePrint({ message, onOpen }: { message: ChatMessage; onOpen: (image: OpenImage) => void }) {
+function ImagePrint({ message, onOpen }: { message: ChatMessage; onOpen: (messageId: string) => void }) {
   const { url, failed, handleError, retry } = useSignedUrl(message.image_path, message.localPreviewUrl);
   const width = message.image_width ?? 4;
   const height = message.image_height ?? 3;
@@ -67,7 +63,7 @@ function ImagePrint({ message, onOpen }: { message: ChatMessage; onOpen: (image:
         {url && !failed ? (
           <button
             type="button"
-            onClick={() => onOpen({ src: url, width, height, alt: message.body ?? 'Shared image' })}
+            onClick={() => onOpen(message.id)}
             className="block h-full w-full cursor-zoom-in"
             aria-label="Open image full size"
           >
@@ -110,15 +106,17 @@ function ImagePrint({ message, onOpen }: { message: ChatMessage; onOpen: (image:
   );
 }
 
-function MessageItemImpl({ message, mine, author, showLabel, onRetry, onDiscard, onOpenImage }: Props) {
+function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onDiscard, onOpenImage }: Props) {
   const accent = accentClass[accentOf(author)];
   const failed = message.status === 'failed';
   const sending = message.status === 'sending';
   const hasImage = Boolean(message.image_path);
-  const jumbo = !hasImage && message.body !== null && isEmojiOnly(message.body);
+  const hasVoice = Boolean(message.audio_path);
+  const jumbo = !hasImage && !hasVoice && message.body !== null && isEmojiOnly(message.body);
 
   return (
     <article
+      data-mid={message.id}
       className={cn(
         'flex w-full',
         mine ? 'justify-end' : 'justify-start',
@@ -145,7 +143,8 @@ function MessageItemImpl({ message, mine, author, showLabel, onRetry, onDiscard,
             className={cn(
               'relative min-w-0 border-ink/70 shadow-slip',
               accent.slip,
-              hasImage ? 'p-2 pb-1.5' : 'px-3.5 pb-1.5 pt-2.5',
+              hasImage ? 'p-2 pb-1.5' : hasVoice ? 'px-3.5 pb-1.5 pt-3' : 'px-3.5 pb-1.5 pt-2.5',
+              flash && 'animate-flash',
               mine ? 'border border-r-[3px]' : 'border border-l-[3px]',
               mine ? 'border-r-current' : accent.rule,
               mine && accent.text,
@@ -155,6 +154,7 @@ function MessageItemImpl({ message, mine, author, showLabel, onRetry, onDiscard,
           >
             <div className="text-ink">
               {hasImage && <ImagePrint message={message} onOpen={onOpenImage} />}
+              {hasVoice && <VoiceNote message={message} />}
               {message.body && (
                 <p
                   className={cn(

@@ -23,6 +23,26 @@
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .12 0 0 0 0 .16 0 0 0 0 .27 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.11'/%3E%3C/svg%3E");
   }
 
+  /* Colour sets. Kai's teal and Isha's pink stay the same in every one. */
+  [data-palette='graphite'] {
+    --ink: 38 38 43;
+    --paper: 242 242 240;
+    --paper-hi: 251 251 250;
+    --paper-lo: 228 228 225;
+  }
+  [data-palette='forest'] {
+    --ink: 28 56 48;
+    --paper: 238 243 238;
+    --paper-hi: 250 252 249;
+    --paper-lo: 224 232 224;
+  }
+  [data-palette='plum'] {
+    --ink: 58 33 72;
+    --paper: 243 240 245;
+    --paper-hi: 251 250 252;
+    --paper-lo: 232 227 236;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -62,8 +82,34 @@
 }
 
 @layer components {
-  /* Graph paper: used behind the login page. */
-  .paper-grid {
+  /* The page you write on. The style follows the person's choice (data-paper on <html>). */
+  .paper-sheet {
+    background-color: rgb(var(--paper));
+    background-image:
+      linear-gradient(to bottom, transparent 31px, rgb(var(--ink) / 0.075) 31px, rgb(var(--ink) / 0.075) 32px),
+      var(--grain);
+    background-size: 100% 32px, 180px 180px;
+    background-attachment: local, scroll;
+  }
+  [data-paper='dots'] .paper-sheet {
+    background-image:
+      radial-gradient(circle, rgb(var(--ink) / 0.32) 1.1px, transparent 1.6px),
+      var(--grain);
+    background-size: 26px 26px, 180px 180px;
+    background-attachment: local, scroll;
+  }
+  [data-paper='grid'] .paper-sheet {
+    background-image:
+      linear-gradient(rgb(var(--ink) / 0.075) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--ink) / 0.075) 1px, transparent 1px),
+      var(--grain);
+    background-size: 26px 26px, 26px 26px, 180px 180px;
+    background-attachment: local, local, scroll;
+  }
+
+  /* The login page: graph paper by default, or whatever paper was chosen on this device. */
+  .paper-login {
+    background-color: rgb(var(--paper));
     background-image:
       linear-gradient(rgb(var(--ink) / 0.07) 1px, transparent 1px),
       linear-gradient(90deg, rgb(var(--ink) / 0.07) 1px, transparent 1px),
@@ -71,15 +117,37 @@
     background-size: 32px 32px, 32px 32px, 180px 180px;
     background-position: -1px -1px, -1px -1px, 0 0;
   }
-
-  /* Ruled notebook paper: used behind the conversation. Lines scroll with the messages. */
-  .paper-ruled {
-    background-color: rgb(var(--paper));
+  [data-paper='dots'] .paper-login {
+    background-image: radial-gradient(circle, rgb(var(--ink) / 0.32) 1.3px, transparent 1.8px), var(--grain);
+    background-size: 30px 30px, 180px 180px;
+    background-position: 0 0, 0 0;
+  }
+  [data-paper='lines'] .paper-login {
     background-image:
-      linear-gradient(to bottom, transparent 31px, rgb(var(--ink) / 0.075) 31px, rgb(var(--ink) / 0.075) 32px),
+      linear-gradient(to bottom, transparent 31px, rgb(var(--ink) / 0.08) 31px, rgb(var(--ink) / 0.08) 32px),
       var(--grain);
     background-size: 100% 32px, 180px 180px;
-    background-attachment: local, scroll;
+    background-position: 0 0, 0 0;
+  }
+
+  /* Tiny swatches of each paper, for the settings screen. */
+  .paper-preview {
+    background-color: rgb(var(--paper));
+    border: 1px solid rgb(var(--ink) / 0.55);
+  }
+  .paper-preview[data-style='dots'] {
+    background-image: radial-gradient(circle, rgb(var(--ink) / 0.5) 1px, transparent 1.4px);
+    background-size: 10px 10px;
+  }
+  .paper-preview[data-style='lines'] {
+    background-image: linear-gradient(to bottom, transparent 8px, rgb(var(--ink) / 0.3) 8px, rgb(var(--ink) / 0.3) 9px);
+    background-size: 100% 9px;
+  }
+  .paper-preview[data-style='grid'] {
+    background-image:
+      linear-gradient(rgb(var(--ink) / 0.28) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--ink) / 0.28) 1px, transparent 1px);
+    background-size: 10px 10px;
   }
 
   /* The dark side panel: printed ink with the same grain, lighter. */

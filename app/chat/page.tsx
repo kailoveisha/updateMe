@@ -42,7 +42,7 @@ async function load(): Promise<Loaded> {
       };
     }
 
-    return { kind: 'bootstrap', value: { status: 'ready', me, people, messages: page.rows, hasMore: page.hasMore, stats } };
+    return { kind: 'bootstrap', value: { status: 'ready', me, email: data.user.email ?? null, people, messages: page.rows, hasMore: page.hasMore, stats } };
   } catch (error) {
     return { kind: 'bootstrap', value: { status: 'error', message: describeError(error).message } };
   }

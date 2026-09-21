@@ -3,7 +3,7 @@ import { Tape } from '@/components/ui/tape';
 
 export default function NotFound() {
   return (
-    <main className="paper-grid flex min-h-dvh items-center justify-center px-6 py-12">
+    <main className="paper-login flex min-h-dvh items-center justify-center px-6 py-12">
       <div className="relative w-full max-w-md -rotate-[0.8deg] border border-ink/70 bg-paper-hi px-7 pb-8 pt-10 shadow-slip">
         <Tape className="-top-2.5 left-9 -rotate-[4deg]" />
         <h1 className="font-display text-[2rem] font-medium leading-[1.05]">No page here.</h1>

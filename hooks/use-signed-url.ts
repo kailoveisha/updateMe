@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { STORAGE_BUCKET } from '@/lib/chat/constants';
 import { getSignedUrl } from '@/lib/chat/signed-urls';
 
 interface Result {
@@ -12,7 +13,7 @@ interface Result {
 }
 
 /** Resolves a storage path to a displayable URL. A local preview (the sender's own photo) wins. */
-export function useSignedUrl(path: string | null, localPreviewUrl?: string): Result {
+export function useSignedUrl(path: string | null, localPreviewUrl?: string, bucket: string = STORAGE_BUCKET): Result {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const renewed = useRef(false);
@@ -21,24 +22,24 @@ export function useSignedUrl(path: string | null, localPreviewUrl?: string): Res
     (force: boolean) => {
       if (!path) return;
       setFailed(false);
-      getSignedUrl(path, { force })
+      getSignedUrl(path, { force, bucket })
         .then((next) => setUrl(next))
         .catch(() => setFailed(true));
     },
-    [path],
+    [path, bucket],
   );
 
   useEffect(() => {
     if (localPreviewUrl || !path) return;
     renewed.current = false;
     let cancelled = false;
-    getSignedUrl(path)
+    getSignedUrl(path, { bucket })
       .then((next) => !cancelled && setUrl(next))
       .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
-  }, [path, localPreviewUrl]);
+  }, [path, localPreviewUrl, bucket]);
 
   const handleError = useCallback(() => {
     if (localPreviewUrl) return;

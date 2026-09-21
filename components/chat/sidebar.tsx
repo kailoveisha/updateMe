@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { LogOut, X } from 'lucide-react';
+import { LogOut, Settings, X } from 'lucide-react';
 import { DateStamp } from '@/components/ui/date-stamp';
 import { Monogram } from '@/components/ui/monogram';
 import { Spinner } from '@/components/ui/spinner';
@@ -17,6 +17,7 @@ interface Props {
   stats: ChatStats;
   signingOut: boolean;
   onSignOut: () => void;
+  onOpenSettings: () => void;
   onClose?: () => void;
 }
 
@@ -31,7 +32,7 @@ function Leader({ label, value }: { label: string; value: string }) {
 }
 
 /** The identity panel: wordmark, who is in the conversation, a few real numbers, sign out. */
-export function SidebarContent({ people, meId, onlineIds, presenceKnown, stats, signingOut, onSignOut, onClose }: Props) {
+export function SidebarContent({ people, meId, onlineIds, presenceKnown, stats, signingOut, onSignOut, onOpenSettings, onClose }: Props) {
   const ordered = [...people].sort((a, b) => (a.id === meId ? -1 : b.id === meId ? 1 : 0));
 
   return (
@@ -95,15 +96,25 @@ export function SidebarContent({ people, meId, onlineIds, presenceKnown, stats, 
       </section>
 
       <div className="mt-auto flex items-end justify-between pt-10">
-        <button
-          type="button"
-          onClick={onSignOut}
-          disabled={signingOut}
-          className="inline-flex items-center gap-2 py-2 text-[14.5px] font-medium text-paper/85 underline decoration-paper/30 underline-offset-[6px] transition-colors hover:text-paper hover:decoration-marker focus-visible:outline-paper disabled:cursor-wait"
-        >
-          {signingOut ? <Spinner /> : <LogOut size={17} strokeWidth={1.6} />}
-          {signingOut ? 'Signing out…' : 'Sign out'}
-        </button>
+        <div className="flex flex-col items-start gap-1">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="inline-flex items-center gap-2 py-2 text-[14.5px] font-medium text-paper/85 underline decoration-paper/30 underline-offset-[6px] transition-colors hover:text-paper hover:decoration-marker focus-visible:outline-paper"
+          >
+            <Settings size={17} strokeWidth={1.6} />
+            Settings
+          </button>
+          <button
+            type="button"
+            onClick={onSignOut}
+            disabled={signingOut}
+            className="inline-flex items-center gap-2 py-2 text-[14.5px] font-medium text-paper/85 underline decoration-paper/30 underline-offset-[6px] transition-colors hover:text-paper hover:decoration-marker focus-visible:outline-paper disabled:cursor-wait"
+          >
+            {signingOut ? <Spinner /> : <LogOut size={17} strokeWidth={1.6} />}
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
         <DateStamp className="text-paper/85" />
       </div>
     </div>

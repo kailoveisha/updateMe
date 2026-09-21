@@ -8,14 +8,17 @@ import { Composer } from '@/components/chat/composer';
 import { ConnectionBanner } from '@/components/chat/connection-banner';
 import { ImageLightbox } from '@/components/chat/image-lightbox';
 import { MessageList } from '@/components/chat/message-list';
-import type { OpenImage } from '@/components/chat/message-item';
+import { SearchPanel } from '@/components/chat/search-panel';
+import { SettingsDialog } from '@/components/chat/settings-dialog';
 import { SidebarContent } from '@/components/chat/sidebar';
+import { useAppearance } from '@/hooks/use-appearance';
 import { useAttachment } from '@/hooks/use-attachment';
 import { useChat } from '@/hooks/use-chat';
 import { useIsClient } from '@/hooks/use-is-client';
 import { usePresence } from '@/hooks/use-presence';
+import type { PreparedVoice } from '@/lib/chat/voice';
 import { getBrowserClient } from '@/lib/supabase/client';
-import type { ChatBootstrap, Profile } from '@/types/chat';
+import type { ChatBootstrap, MessageRow, Profile } from '@/types/chat';
 
 type Ready = Extract<ChatBootstrap, { status: 'ready' }>;
 
@@ -28,7 +31,10 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
   const signingOutRef = useRef(false);
   const [signingOut, setSigningOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [lightbox, setLightbox] = useState<OpenImage | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
+  const [jumpTarget, setJumpTarget] = useState<{ id: string; nonce: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
 
@@ -49,6 +55,7 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
   });
   const presence = usePresence(me.id);
   const attachment = useAttachment();
+  const appearance = useAppearance(me.id, me.preferences);
 
   // If the session ends anywhere (another tab, expiry), leave the chat instead of failing silently.
   useEffect(() => {
@@ -71,13 +78,31 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
     goToLogin();
   }, [goToLogin]);
 
+  const { take: takeAttachment, setNotice } = attachment;
+  const { send: sendMessage, loadUntil } = chat;
+
   const handleSend = useCallback(
-    (body: string) => {
-      const image = attachment.take();
-      chat.send({ body, image });
+    (body: string, voice: PreparedVoice | null) => {
+      // A voice note is sent on its own; any picked photo stays in the composer for later.
+      sendMessage({ body, image: voice ? null : takeAttachment(), voice });
     },
-    [attachment, chat],
+    [sendMessage, takeAttachment],
   );
+
+  /* ----- search: open a result, even one far back in history ----- */
+  const handleJump = useCallback(
+    async (row: MessageRow) => {
+      setSearchOpen(false);
+      const ok = await loadUntil(row.created_at);
+      if (ok) setJumpTarget({ id: row.id, nonce: Date.now() });
+      else setNotice("Couldn't load that part of the conversation. Check your connection and try again.");
+    },
+    [loadUntil, setNotice],
+  );
+  const clearJump = useCallback(() => setJumpTarget(null), []);
+
+  /* ----- photos for the full-screen viewer ----- */
+  const photos = useMemo(() => chat.items.filter((m) => m.image_path), [chat.items]);
 
   /* ----- drag & drop an image anywhere on the conversation ----- */
   const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files');
@@ -103,8 +128,16 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
     if (event.dataTransfer.files.length > 0) void attachment.attach(event.dataTransfer.files);
   };
 
-  const closeLightbox = useCallback(() => setLightbox(null), []);
+  const closeLightbox = useCallback(() => setLightboxId(null), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const openSettings = useCallback(() => {
+    setMenuOpen(false);
+    setSettingsOpen(true);
+  }, []);
+
+  const otherActivity = other ? (presence.activity[other.id] ?? null) : null;
 
   const sidebar = (onClose?: () => void) => (
     <SidebarContent
@@ -115,6 +148,7 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
       stats={chat.stats}
       signingOut={signingOut}
       onSignOut={signOut}
+      onOpenSettings={openSettings}
       onClose={onClose}
     />
   );
@@ -134,38 +168,49 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
           other={other}
           online={other ? presence.onlineIds.has(other.id) : false}
           presenceKnown={presence.available}
+          activity={otherActivity}
           onOpenMenu={() => setMenuOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
         />
         <ConnectionBanner state={chat.connection} />
 
-        {mounted ? (
-          <MessageList
-            messages={chat.items}
-            meId={me.id}
-            people={people}
-            otherName={other?.display_name ?? null}
-            hasMore={chat.hasMore}
-            loadingEarlier={chat.loadingEarlier}
-            loadError={chat.loadError}
-            onLoadEarlier={chat.loadEarlier}
-            onRetry={chat.retry}
-            onDiscard={chat.discard}
-            onOpenImage={setLightbox}
-          />
-        ) : (
-          <div className="paper-ruled min-h-0 flex-1" aria-busy="true" />
-        )}
+        {/* The search panel covers the conversation and the composer, but not the header. */}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          {mounted ? (
+            <MessageList
+              messages={chat.items}
+              meId={me.id}
+              people={people}
+              otherName={other?.display_name ?? null}
+              hasMore={chat.hasMore}
+              loadingEarlier={chat.loadingEarlier}
+              loadError={chat.loadError}
+              onLoadEarlier={chat.loadEarlier}
+              onRetry={chat.retry}
+              onDiscard={chat.discard}
+              onOpenImage={setLightboxId}
+              otherActivity={otherActivity}
+              jumpTarget={jumpTarget}
+              onJumpHandled={clearJump}
+            />
+          ) : (
+            <div className="paper-sheet min-h-0 flex-1" aria-busy="true" />
+          )}
 
-        <Composer
-          otherName={other?.display_name ?? null}
-          attachment={attachment.attachment}
-          preparing={attachment.preparing}
-          notice={attachment.notice}
-          onAttach={(files) => void attachment.attach(files)}
-          onClearAttachment={attachment.clear}
-          onDismissNotice={attachment.dismissNotice}
-          onSend={handleSend}
-        />
+          <Composer
+            otherName={other?.display_name ?? null}
+            attachment={attachment.attachment}
+            preparing={attachment.preparing}
+            notice={attachment.notice}
+            onAttach={(files) => void attachment.attach(files)}
+            onClearAttachment={attachment.clear}
+            onDismissNotice={attachment.dismissNotice}
+            onSend={handleSend}
+            onActivity={presence.setActivity}
+          />
+
+          {searchOpen && <SearchPanel people={people} onJump={handleJump} onClose={closeSearch} />}
+        </div>
 
         {dragging && (
           <div className="animate-fade-in pointer-events-none absolute inset-3 z-40 flex flex-col items-center justify-center gap-3 border-2 border-dashed border-ink bg-marker/45 text-center">
@@ -177,19 +222,23 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
 
       {menuOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close details"
-            onClick={closeMenu}
-            className="animate-fade-in absolute inset-0 bg-ink/50"
-          />
-          <div className="animate-drawer-in absolute inset-y-0 left-0 w-[min(21rem,88vw)] shadow-sheet">
-            {sidebar(closeMenu)}
-          </div>
+          <button type="button" aria-label="Close menu" onClick={closeMenu} className="animate-fade-in absolute inset-0 bg-ink/50" />
+          <div className="animate-drawer-in absolute inset-y-0 left-0 w-[min(21rem,88vw)] shadow-sheet">{sidebar(closeMenu)}</div>
         </div>
       )}
 
-      {lightbox && <ImageLightbox image={lightbox} onClose={closeLightbox} />}
+      {settingsOpen && (
+        <SettingsDialog
+          name={me.display_name}
+          email={bootstrap.email}
+          look={appearance.look}
+          saveState={appearance.saveState}
+          onLookChange={appearance.setLook}
+          onClose={closeSettings}
+        />
+      )}
+
+      {lightboxId && <ImageLightbox images={photos} startId={lightboxId} onClose={closeLightbox} />}
     </div>
   );
 }
