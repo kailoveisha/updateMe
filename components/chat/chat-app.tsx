@@ -9,6 +9,7 @@ import { ConnectionBanner } from '@/components/chat/connection-banner';
 import { DeleteDialog } from '@/components/chat/delete-dialog';
 import { ImageLightbox } from '@/components/chat/image-lightbox';
 import { MessageList } from '@/components/chat/message-list';
+import { ReplyBar } from '@/components/chat/reply-bar';
 import { SearchPanel } from '@/components/chat/search-panel';
 import { SettingsDialog } from '@/components/chat/settings-dialog';
 import { SidebarContent } from '@/components/chat/sidebar';
@@ -18,6 +19,7 @@ import { useChat } from '@/hooks/use-chat';
 import { useIsClient } from '@/hooks/use-is-client';
 import { usePresence } from '@/hooks/use-presence';
 import type { PreparedVoice } from '@/lib/chat/voice';
+import { fetchMessageById } from '@/lib/chat/queries';
 import { getBrowserClient } from '@/lib/supabase/client';
 import type { ChatBootstrap, ChatMessage, MessageRow, Profile } from '@/types/chat';
 
@@ -36,6 +38,7 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ChatMessage | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [jumpTarget, setJumpTarget] = useState<{ id: string; nonce: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
@@ -81,14 +84,42 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
   }, [goToLogin]);
 
   const { take: takeAttachment, setNotice } = attachment;
-  const { send: sendMessage, loadUntil } = chat;
+  const { send: sendMessage, loadUntil, items: chatItems } = chat;
 
   const handleSend = useCallback(
     (body: string, voice: PreparedVoice | null) => {
       // A voice note is sent on its own; any picked photo stays in the composer for later.
-      sendMessage({ body, image: voice ? null : takeAttachment(), voice });
+      sendMessage({ body, image: voice ? null : takeAttachment(), voice, replyToId: replyingTo?.id ?? null });
+      setReplyingTo(null);
     },
-    [sendMessage, takeAttachment],
+    [replyingTo, sendMessage, takeAttachment],
+  );
+
+  const requestReply = useCallback((message: ChatMessage) => setReplyingTo(message), []);
+  const cancelReply = useCallback(() => setReplyingTo(null), []);
+
+  /** Scrolls to (and highlights) the message a reply quote points at, loading it first if it isn't on screen. */
+  const jumpToReply = useCallback(
+    async (id: string) => {
+      const already = chatItems.find((m) => m.id === id);
+      if (already) {
+        setJumpTarget({ id, nonce: Date.now() });
+        return;
+      }
+      try {
+        const row = await fetchMessageById(getBrowserClient(), id);
+        if (!row) {
+          setNotice("That message isn't available anymore.");
+          return;
+        }
+        const ok = await loadUntil(row.created_at);
+        if (ok) setJumpTarget({ id, nonce: Date.now() });
+        else setNotice("Couldn't load that part of the conversation. Check your connection and try again.");
+      } catch {
+        setNotice("Couldn't find that message. Check your connection and try again.");
+      }
+    },
+    [chatItems, loadUntil, setNotice],
   );
 
   /* ----- search: open a result, even one far back in history ----- */
@@ -209,12 +240,18 @@ export function ChatScreen({ bootstrap }: { bootstrap: Ready }) {
               onDiscard={chat.discard}
               onOpenImage={setLightboxId}
               onRequestDelete={requestDelete}
+              onReply={requestReply}
+              onJumpToReply={(id) => void jumpToReply(id)}
               otherActivity={otherActivity}
               jumpTarget={jumpTarget}
               onJumpHandled={clearJump}
             />
           ) : (
             <div className="paper-sheet min-h-0 flex-1" aria-busy="true" />
+          )}
+
+          {replyingTo && (
+            <ReplyBar message={replyingTo} author={people.find((p) => p.id === replyingTo.sender_id) ?? null} onCancel={cancelReply} />
           )}
 
           <Composer

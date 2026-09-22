@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, Copy, MoreHorizontal, Trash2, Undo2 } from 'lucide-react';
+import { Check, Copy, MoreHorizontal, Reply, Trash2, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
 
@@ -11,10 +11,11 @@ interface Props {
   /** Which side of the bubble the "…" button sits on. */
   side: 'left' | 'right';
   onRequestDelete: (message: ChatMessage) => void;
+  onReply: (message: ChatMessage) => void;
 }
 
 /** The small "…" beside a message: copy, delete for me, or (for your own) unsend for everyone. */
-export function MessageMenu({ message, mine, side, onRequestDelete }: Props) {
+export function MessageMenu({ message, mine, side, onRequestDelete, onReply }: Props) {
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -96,8 +97,22 @@ export function MessageMenu({ message, mine, side, onRequestDelete }: Props) {
             side === 'left' ? 'right-0' : 'left-0',
           )}
         >
+          {!unsent && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                close();
+                onReply(message);
+              }}
+              className={item}
+            >
+              <Reply size={16} strokeWidth={1.6} />
+              Reply
+            </button>
+          )}
           {canCopy && (
-            <button type="button" role="menuitem" onClick={copy} className={item}>
+            <button type="button" role="menuitem" onClick={copy} className={cn(item, 'border-t border-ink/15')}>
               {copied ? <Check size={16} strokeWidth={1.8} /> : <Copy size={16} strokeWidth={1.6} />}
               {copied ? 'Copied' : 'Copy text'}
             </button>
@@ -109,7 +124,7 @@ export function MessageMenu({ message, mine, side, onRequestDelete }: Props) {
               close();
               onRequestDelete(message);
             }}
-            className={cn(item, canCopy && 'border-t border-ink/15')}
+            className={cn(item, 'border-t border-ink/15')}
           >
             {mine && !unsent ? <Undo2 size={16} strokeWidth={1.6} className="text-pen" /> : <Trash2 size={16} strokeWidth={1.6} className="text-pen" />}
             <span className="text-pen">{mine && !unsent ? 'Delete or unsend…' : 'Delete for me…'}</span>

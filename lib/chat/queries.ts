@@ -6,7 +6,7 @@ import { PAGE_SIZE, SEARCH_PAGE_SIZE } from './constants';
 const VISIBLE = 'messages_visible';
 
 export const MESSAGE_COLUMNS =
-  'id, sender_id, body, image_path, image_width, image_height, image_mime, image_size, audio_path, audio_duration_ms, audio_peaks, deleted_at, created_at';
+  'id, sender_id, body, image_path, image_width, image_height, image_mime, image_size, audio_path, audio_duration_ms, audio_peaks, deleted_at, created_at, reply_to_id';
 
 /**
  * The newest PAGE_SIZE messages (or the PAGE_SIZE before `before`), oldest first.
@@ -180,4 +180,14 @@ export async function removeFiles(supabase: SupabaseClient, bucket: string, path
   } catch {
     /* ignore */
   }
+}
+
+/** One message by id, as this person may see it. Used to resolve a reply quote that isn't already on screen. */
+export async function fetchMessageById(supabase: SupabaseClient, id: string): Promise<MessageRow | null> {
+  // Deliberately not .maybeSingle() here: on a total network failure it can hang instead of
+  // rejecting, in at least one version of the client. A plain array select behaves correctly.
+  const { data, error } = await supabase.from(VISIBLE).select(MESSAGE_COLUMNS).eq('id', id).limit(1);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as MessageRow[];
+  return rows[0] ?? null;
 }

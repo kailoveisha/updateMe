@@ -23,6 +23,9 @@ interface Props {
   onDiscard: (id: string) => void;
   onOpenImage: (messageId: string) => void;
   onRequestDelete: (message: ChatMessage) => void;
+  onReply: (message: ChatMessage) => void;
+  /** Jump to (and highlight) the message a reply quote points at — loading it first if needed. */
+  onJumpToReply: (id: string) => void;
   /** What the other person is doing right now, if anything. */
   otherActivity: Activity | null;
   /** Scroll to (and highlight) a message. `nonce` lets the same message be targeted twice. */
@@ -49,6 +52,8 @@ export function MessageList({
   onDiscard,
   onOpenImage,
   onRequestDelete,
+  onReply,
+  onJumpToReply,
   otherActivity,
   jumpTarget,
   onJumpHandled,
@@ -67,6 +72,7 @@ export function MessageList({
   const [flashId, setFlashId] = useState<string | null>(null);
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+  const messagesById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
 
   const rows = useMemo<Row[]>(() => {
     const now = new Date();
@@ -248,6 +254,14 @@ export function MessageList({
                     onDiscard={onDiscard}
                     onOpenImage={onOpenImage}
                     onRequestDelete={onRequestDelete}
+                    onReply={onReply}
+                    repliedMessage={row.message.reply_to_id ? (messagesById.get(row.message.reply_to_id) ?? null) : null}
+                    repliedAuthor={
+                      row.message.reply_to_id
+                        ? (peopleById.get(messagesById.get(row.message.reply_to_id)?.sender_id ?? '') ?? null)
+                        : null
+                    }
+                    onJumpToReply={onJumpToReply}
                   />
                 ),
               )}

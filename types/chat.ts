@@ -26,6 +26,8 @@ export interface MessageRow {
   /** Set when the sender unsent the message for everyone (its content is erased). */
   deleted_at: string | null;
   created_at: string;
+  /** The message this one replies to, if any. */
+  reply_to_id: string | null;
 }
 
 /** What the client is allowed to insert (created_at is set by the database). */

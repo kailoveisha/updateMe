@@ -189,6 +189,8 @@ export interface SendInput {
   body: string;
   image?: PreparedImage | null;
   voice?: PreparedVoice | null;
+  /** The message this one replies to, if any. */
+  replyToId?: string | null;
 }
 
 async function accessTokenOf(supabase: SupabaseClient): Promise<string> {
@@ -294,7 +296,7 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
   }, []);
 
   const send = useCallback(
-    ({ body, image = null, voice = null }: SendInput) => {
+    ({ body, image = null, voice = null, replyToId = null }: SendInput) => {
       const id = uuid();
       const text = body.trim();
       const payload: NewMessage = {
@@ -309,6 +311,7 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
         audio_path: voice ? `${myId}/${id}.${voice.ext}` : null,
         audio_duration_ms: voice ? voice.durationMs : null,
         audio_peaks: voice ? voice.peaks : null,
+        reply_to_id: replyToId,
       };
       if (!payload.body && !payload.image_path && !payload.audio_path) return;
 

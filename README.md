@@ -103,6 +103,17 @@ The bubble's outline is hand-sketched (a small SVG filter gives it a rough, char
 
 ---
 
+## Upgrading to v5 (reply to a message)
+
+Your conversation is safe: v5 only **adds** a column. Nothing is modified or deleted.
+
+1. **Run the SQL first.** Supabase → SQL Editor → New query → paste all of `supabase/migrations/20260924000000_updateme_v5.sql` → Run. *(Run v2 and v3 first if you haven't.)*
+2. **Then deploy the new code.** Overwrite the files in your GitHub repo; Vercel redeploys. No new environment variables.
+
+**What's new:** open a message's **⋯** menu → **Reply**. A quoted preview of that message appears above the composer while you write, and once sent, the new message carries a small quoted strip showing what it replied to — tap that strip to jump straight to the original, even if it's far back in the conversation. Replying to an already-unsent message isn't offered, since there'd be nothing left to quote.
+
+---
+
 ## What you need
 
 - **Node.js 20.9 or newer** (`node -v` to check) — https://nodejs.org

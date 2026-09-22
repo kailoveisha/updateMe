@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { AlertCircle, Ban, Check, ImageOff, RotateCw } from 'lucide-react';
 import { MascotPeek } from '@/components/chat/mascot-peek';
 import { MessageMenu } from '@/components/chat/message-menu';
+import { ReplyQuote } from '@/components/chat/reply-quote';
 import { VoiceNote } from '@/components/chat/voice-note';
 import { Spinner } from '@/components/ui/spinner';
 import { Tape } from '@/components/ui/tape';
@@ -26,6 +27,12 @@ interface Props {
   onOpenImage: (messageId: string) => void;
   /** Opens the "Delete this message?" choice. */
   onRequestDelete: (message: ChatMessage) => void;
+  onReply: (message: ChatMessage) => void;
+  /** The message this one replies to, if it's currently loaded (undefined if not loaded yet, null if there is none). */
+  repliedMessage: ChatMessage | null | undefined;
+  /** Who wrote the replied-to message, if known. */
+  repliedAuthor: Profile | null;
+  onJumpToReply: (id: string) => void;
 }
 
 function RichText({ text }: { text: string }) {
@@ -110,7 +117,21 @@ function ImagePrint({ message, onOpen }: { message: ChatMessage; onOpen: (messag
   );
 }
 
-function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onDiscard, onOpenImage, onRequestDelete }: Props) {
+function MessageItemImpl({
+  message,
+  mine,
+  author,
+  showLabel,
+  flash,
+  onRetry,
+  onDiscard,
+  onOpenImage,
+  onRequestDelete,
+  onReply,
+  repliedMessage,
+  repliedAuthor,
+  onJumpToReply,
+}: Props) {
   const accent = accentClass[accentOf(author)];
   const failed = message.status === 'failed';
   const sending = message.status === 'sending';
@@ -170,6 +191,13 @@ function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onD
               )}
             >
               <div className="text-ink">
+                {message.reply_to_id && (
+                  <ReplyQuote
+                    message={repliedMessage ?? undefined}
+                    author={repliedAuthor}
+                    onClick={() => onJumpToReply(message.reply_to_id as string)}
+                  />
+                )}
                 {hasImage && <ImagePrint message={message} onOpen={onOpenImage} />}
                 {hasVoice && <VoiceNote message={message} />}
                 {message.body && (
@@ -205,7 +233,15 @@ function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onD
           )}
 
           {settled && !unsent && <MascotPeek person={author} side={mine ? 'mine' : 'theirs'} />}
-          {settled && <MessageMenu message={message} mine={mine} side={mine ? 'left' : 'right'} onRequestDelete={onRequestDelete} />}
+          {settled && (
+            <MessageMenu
+              message={message}
+              mine={mine}
+              side={mine ? 'left' : 'right'}
+              onRequestDelete={onRequestDelete}
+              onReply={onReply}
+            />
+          )}
         </div>
 
         {failed && (
