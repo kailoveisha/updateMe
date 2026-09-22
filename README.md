@@ -80,6 +80,21 @@ If the check doesn't appear or says it couldn't load, it is usually an ad blocke
 
 ---
 
+## A sixth theme: Doodle + Fan Page
+
+**Look → Paper → Doodle**, **Look → Ink → Fan Page** — a dark, hand-drawn theme (stars, hearts, sparkles, a scribble, sticker-style message bubbles with a gentle tilt). It's built entirely with original CSS art; nothing traced or copied from anyone's official character art.
+
+**Your own sticker (optional, code only — not in Settings):** the Doodle paper looks for two image files and, if it finds them, shows them peeking out of the corner of each person's bubbles:
+
+```
+public/mascot-kai.png
+public/mascot-isha.png
+```
+
+Add either or both (PNG with a transparent background works best, roughly square, 150–250px). Nothing else to configure — no upload screen, no database. If a file isn't there, nothing shows; the bubble looks exactly like today. Redeploy after adding a file for it to appear.
+
+---
+
 ## What you need
 
 - **Node.js 20.9 or newer** (`node -v` to check) — https://nodejs.org
