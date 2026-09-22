@@ -84,14 +84,22 @@ If the check doesn't appear or says it couldn't load, it is usually an ad blocke
 
 **Look → Paper → Doodle**, **Look → Ink → Fan Page** — a dark, hand-drawn theme (stars, hearts, sparkles, a scribble, sticker-style message bubbles with a gentle tilt). It's built entirely with original CSS art; nothing traced or copied from anyone's official character art.
 
-**Your own sticker (optional, code only — not in Settings):** the Doodle paper looks for two image files and, if it finds them, shows them peeking out of the corner of each person's bubbles:
+The bubble's outline is hand-sketched (a small SVG filter gives it a rough, charcoal wobble instead of a clean rectangle) instead of the flat sticker-card look the other papers use.
 
-```
-public/mascot-kai.png
-public/mascot-isha.png
-```
+**Two optional images, code only — not in Settings.** Add either any time; nothing else to configure, no upload screen, no database. If a file isn't there, that part just doesn't show and everything else looks the same. Redeploy after adding one for it to appear.
 
-Add either or both (PNG with a transparent background works best, roughly square, 150–250px). Nothing else to configure — no upload screen, no database. If a file isn't there, nothing shows; the bubble looks exactly like today. Redeploy after adding a file for it to appear.
+- **A personal sticker, peeking out of the corner of each person's bubbles:**
+  ```
+  public/mascot-kai.png
+  public/mascot-isha.png
+  ```
+  PNG with a transparent background, roughly square, 150–250px works best. Add either or both.
+
+- **A repeating background pattern**, tiled behind the whole conversation and the login page, automatically kept faint so it never competes with the bubbles:
+  ```
+  public/doodle-pattern.png
+  ```
+  PNG with a transparent background, designed to tile edge-to-edge (a small motif repeated across a square canvas — 200–260px square is a good size). However bold the source image is, it's always blended down; there's nothing to adjust.
 
 ---
 

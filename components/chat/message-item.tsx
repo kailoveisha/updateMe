@@ -143,7 +143,7 @@ function MessageItemImpl({ message, mine, author, showLabel, flash, onRetry, onD
           <p className={cn('mb-1 px-0.5 font-display text-[15px] italic leading-none', accent.text)}>{name}</p>
         )}
 
-        <div className={cn('group/row relative flex items-center gap-1', mine ? 'flex-row-reverse pr-6' : 'pl-6')}>
+        <div className={cn('group/row relative flex items-center gap-1', mine ? 'flex-row-reverse pr-3' : 'pl-3')}>
           {unsent ? (
             <div {...bubbleProps} className="bubble is-unsent flex min-w-0 items-center gap-2 px-3.5 py-2 text-[14.5px] italic text-ink/60">
               <Ban size={15} strokeWidth={1.6} aria-hidden className="shrink-0" />

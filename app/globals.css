@@ -28,7 +28,7 @@
 
     /* Doodle paper: hand-drawn stars, a heart, sparkles and a scribble line — original art, tiled.
        Each palette may recolour it (see the Night / Fan Page blocks below), same way --grain works. */
-    --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cg fill='none' stroke='%231F2A44' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.4'%3E%3Cpath d='M38 22 L45 40 L64 41 L49 53 L54 71 L38 60 L22 71 L27 53 L12 41 L31 40 Z'/%3E%3Cpath d='M178 150 C178 138 166 132 157 139 C149 146 149 158 157 167 C163 174 172 183 178 192 C184 183 193 174 199 167 C207 158 207 146 199 139 C190 132 178 138 178 150 Z'/%3E%3Cpath d='M20 140 Q34 122 48 140 T76 140 T104 140'/%3E%3Cpath d='M150 30 L154 42 L166 46 L154 50 L150 62 L146 50 L134 46 L146 42 Z'/%3E%3Cpath d='M205 90 l8 8 M213 90 l-8 8'/%3E%3Ccircle cx='95' cy='185' r='3'/%3E%3Ccircle cx='108' cy='195' r='2'/%3E%3Cpath d='M60 105 q6 -10 12 0 q6 10 12 0'/%3E%3Cpath d='M190 210 L196 224 L211 225 L199 234 L203 249 L190 240 L177 249 L181 234 L169 225 L184 224 Z' transform='scale(0.55) translate(70 20)'/%3E%3C/g%3E%3C/svg%3E");
+    --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340' viewBox='0 0 340 340'%3E%3Cg fill='none' stroke='%231F2A44' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='0.2'%3E%3Cpath d='M46 34 L52 50 L69 51 L55 61 L60 78 L46 68 L32 78 L37 61 L23 51 L40 50 Z'/%3E%3Cpath d='M255 210 C255 200 245 195 237 201 C230 207 230 217 237 225 C242 231 250 239 255 247 C260 239 268 231 273 225 C280 217 280 207 273 201 C265 195 255 200 255 210 Z'/%3E%3Cpath d='M60 250 Q76 234 92 250 T124 250'/%3E%3Cpath d='M270 60 l6 6 M278 60 l-6 6'/%3E%3C/g%3E%3C/svg%3E");
 
     /* Fine paper grain, tinted with the ink colour. */
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .12 0 0 0 0 .16 0 0 0 0 .27 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.11'/%3E%3C/svg%3E");
@@ -91,7 +91,7 @@
     --panel: 8 6 9;
     --panel-fg: 250 235 242;
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .96 0 0 0 0 .84 0 0 0 0 .92 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.06'/%3E%3C/svg%3E");
-    --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cg fill='none' stroke='%23FADCE9' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.4'%3E%3Cpath d='M38 22 L45 40 L64 41 L49 53 L54 71 L38 60 L22 71 L27 53 L12 41 L31 40 Z'/%3E%3Cpath d='M178 150 C178 138 166 132 157 139 C149 146 149 158 157 167 C163 174 172 183 178 192 C184 183 193 174 199 167 C207 158 207 146 199 139 C190 132 178 138 178 150 Z'/%3E%3Cpath d='M20 140 Q34 122 48 140 T76 140 T104 140'/%3E%3Cpath d='M150 30 L154 42 L166 46 L154 50 L150 62 L146 50 L134 46 L146 42 Z'/%3E%3Cpath d='M205 90 l8 8 M213 90 l-8 8'/%3E%3Ccircle cx='95' cy='185' r='3'/%3E%3Ccircle cx='108' cy='195' r='2'/%3E%3Cpath d='M60 105 q6 -10 12 0 q6 10 12 0'/%3E%3Cpath d='M190 210 L196 224 L211 225 L199 234 L203 249 L190 240 L177 249 L181 234 L169 225 L184 224 Z' transform='scale(0.55) translate(70 20)'/%3E%3C/g%3E%3C/svg%3E");
+    --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340' viewBox='0 0 340 340'%3E%3Cg fill='none' stroke='%23FADCE9' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='0.22'%3E%3Cpath d='M46 34 L52 50 L69 51 L55 61 L60 78 L46 68 L32 78 L37 61 L23 51 L40 50 Z'/%3E%3Cpath d='M255 210 C255 200 245 195 237 201 C230 207 230 217 237 225 C242 231 250 239 255 247 C260 239 268 231 273 225 C280 217 280 207 273 201 C265 195 255 200 255 210 Z'/%3E%3Cpath d='M60 250 Q76 234 92 250 T124 250'/%3E%3Cpath d='M270 60 l6 6 M278 60 l-6 6'/%3E%3C/g%3E%3C/svg%3E");
   }
 
   html {
@@ -231,14 +231,25 @@
   }
 
   [data-paper='doodle'] .paper-sheet {
-    background-image: var(--doodle), var(--grain);
-    background-size: 240px 240px, 180px 180px;
-    background-attachment: local, scroll;
+    /* order: soft tint (keeps it quiet) → your own pattern image, if you add one → the built-in doodles → grain */
+    background-image:
+      linear-gradient(rgb(var(--paper) / 0.8), rgb(var(--paper) / 0.8)),
+      url('/doodle-pattern.png'),
+      var(--doodle),
+      var(--grain);
+    background-repeat: no-repeat, repeat, repeat, repeat;
+    background-size: 100% 100%, 220px 220px, 340px 340px, 180px 180px;
+    background-attachment: local, local, local, scroll;
   }
   [data-paper='doodle'] .paper-login {
-    background-image: var(--doodle), var(--grain);
-    background-size: 240px 240px, 180px 180px;
-    background-position: 0 0, 0 0;
+    background-image:
+      linear-gradient(rgb(var(--paper) / 0.8), rgb(var(--paper) / 0.8)),
+      url('/doodle-pattern.png'),
+      var(--doodle),
+      var(--grain);
+    background-repeat: no-repeat, repeat, repeat, repeat;
+    background-size: 100% 100%, 220px 220px, 340px 340px, 180px 180px;
+    background-position: 0 0, 0 0, 0 0, 0 0;
   }
 
   /* Tiny swatches of each paper, for the settings screen. */
@@ -262,7 +273,7 @@
   }
   .paper-preview[data-style='doodle'] {
     background-image: var(--doodle);
-    background-size: 60px 60px;
+    background-size: 85px 85px;
   }
 
   /* The side panel. Its own colours (--panel / --panel-fg) are swapped in for everything inside it,
@@ -368,23 +379,29 @@
     border-color: rgb(var(--ink) / 0.4);
   }
 
-  /* doodle: a hand-drawn sticker card — thick outline, warm cream face, gentle alternating tilt */
+  /* doodle: a charcoal-sketch speech bubble — a soft dark fill with a hand-drawn wobbly outline
+     (the outline is a separate layer with an SVG turbulence filter, so the text inside stays crisp). */
   [data-paper='doodle'] .bubble {
-    --tint: 0.14;
-    border: 2px solid rgb(var(--ink) / 0.85);
-    border-radius: 1.1rem;
+    --tint: 0.13;
+    position: relative;
+    border: 1px solid rgb(var(--ink) / 0.2);
+    border-radius: 1.15rem;
     background-color: rgb(var(--paper-hi));
     background-image: linear-gradient(rgb(var(--accent) / var(--tint)), rgb(var(--accent) / var(--tint)));
-    box-shadow: 3px 4px 0 rgb(var(--shade) / 0.9);
+    box-shadow: 0 1px 0 rgb(var(--shade) / 0.06), 0 8px 16px -12px rgb(var(--shade) / 0.6);
   }
-  [data-paper='doodle'] article:nth-of-type(odd) .bubble {
-    transform: rotate(-1.1deg);
+  [data-paper='doodle'] .bubble::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 2.5px solid rgb(var(--ink) / 0.88);
+    border-radius: inherit;
+    filter: url(#um-charcoal);
+    pointer-events: none;
   }
-  [data-paper='doodle'] article:nth-of-type(even) .bubble {
-    transform: rotate(1.1deg);
-  }
-  [data-paper='doodle'] .bubble.is-unsent {
-    transform: none !important;
+  [data-paper='doodle'] .bubble.is-unsent::after {
+    border-style: dashed;
+    border-width: 1.5px;
   }
 
   /* A personal sticker, dropped in as /public/mascot-<username>.png, peeking from the bubble's corner.

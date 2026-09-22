@@ -25,8 +25,8 @@ export function MascotPeek({ person, side }: Props) {
       aria-hidden
       draggable={false}
       onError={() => setFailed(true)}
-      className={`mascot-peek pointer-events-none absolute bottom-0 z-10 h-16 w-16 select-none object-contain drop-shadow-[2px_3px_0_rgb(var(--shade)/0.5)] ${
-        side === 'mine' ? '-right-8 -rotate-6' : '-left-8 rotate-6 -scale-x-100'
+      className={`mascot-peek pointer-events-none absolute -bottom-2 z-10 h-14 w-14 select-none object-contain drop-shadow-[1px_2px_0_rgb(var(--shade)/0.45)] ${
+        side === 'mine' ? '-right-3 -rotate-6' : '-left-3 rotate-6 -scale-x-100'
       }`}
     />
   );
