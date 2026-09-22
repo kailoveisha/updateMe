@@ -26,6 +26,10 @@
     --panel: var(--ink); /* side panel background */
     --panel-fg: var(--paper); /* side panel text */
 
+    /* Doodle paper: hand-drawn stars, a heart, sparkles and a scribble line — original art, tiled.
+       Each palette may recolour it (see the Night / Fan Page blocks below), same way --grain works. */
+    --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cg fill='none' stroke='%231F2A44' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.4'%3E%3Cpath d='M38 22 L45 40 L64 41 L49 53 L54 71 L38 60 L22 71 L27 53 L12 41 L31 40 Z'/%3E%3Cpath d='M178 150 C178 138 166 132 157 139 C149 146 149 158 157 167 C163 174 172 183 178 192 C184 183 193 174 199 167 C207 158 207 146 199 139 C190 132 178 138 178 150 Z'/%3E%3Cpath d='M20 140 Q34 122 48 140 T76 140 T104 140'/%3E%3Cpath d='M150 30 L154 42 L166 46 L154 50 L150 62 L146 50 L134 46 L146 42 Z'/%3E%3Cpath d='M205 90 l8 8 M213 90 l-8 8'/%3E%3Ccircle cx='95' cy='185' r='3'/%3E%3Ccircle cx='108' cy='195' r='2'/%3E%3Cpath d='M60 105 q6 -10 12 0 q6 10 12 0'/%3E%3Cpath d='M190 210 L196 224 L211 225 L199 234 L203 249 L190 240 L177 249 L181 234 L169 225 L184 224 Z' transform='scale(0.55) translate(70 20)'/%3E%3C/g%3E%3C/svg%3E");
+
     /* Fine paper grain, tinted with the ink colour. */
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .12 0 0 0 0 .16 0 0 0 0 .27 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.11'/%3E%3C/svg%3E");
   }
@@ -67,6 +71,27 @@
     --panel: 11 13 21;
     --panel-fg: 226 230 242;
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .78 0 0 0 0 .82 0 0 0 0 .95 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+  }
+
+  /* Fan Page: a dark diary-style palette — near-black with a soft pink ink, for the Doodle paper. */
+  [data-palette='idol'] {
+    color-scheme: dark;
+    --ink: 250 235 242;
+    --paper: 15 12 16;
+    --paper-hi: 26 20 25;
+    --paper-lo: 38 28 36;
+    --kai: 108 214 224;
+    --isha: 255 133 184;
+    --marker: 255 196 92;
+    --red: 255 122 122;
+    --moss: 129 219 172;
+    --shade: 0 0 0;
+    --scrim: 2 1 3;
+    --on-marker: 27 18 12;
+    --panel: 8 6 9;
+    --panel-fg: 250 235 242;
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .96 0 0 0 0 .84 0 0 0 0 .92 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.06'/%3E%3C/svg%3E");
+    --doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cg fill='none' stroke='%23FADCE9' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.4'%3E%3Cpath d='M38 22 L45 40 L64 41 L49 53 L54 71 L38 60 L22 71 L27 53 L12 41 L31 40 Z'/%3E%3Cpath d='M178 150 C178 138 166 132 157 139 C149 146 149 158 157 167 C163 174 172 183 178 192 C184 183 193 174 199 167 C207 158 207 146 199 139 C190 132 178 138 178 150 Z'/%3E%3Cpath d='M20 140 Q34 122 48 140 T76 140 T104 140'/%3E%3Cpath d='M150 30 L154 42 L166 46 L154 50 L150 62 L146 50 L134 46 L146 42 Z'/%3E%3Cpath d='M205 90 l8 8 M213 90 l-8 8'/%3E%3Ccircle cx='95' cy='185' r='3'/%3E%3Ccircle cx='108' cy='195' r='2'/%3E%3Cpath d='M60 105 q6 -10 12 0 q6 10 12 0'/%3E%3Cpath d='M190 210 L196 224 L211 225 L199 234 L203 249 L190 240 L177 249 L181 234 L169 225 L184 224 Z' transform='scale(0.55) translate(70 20)'/%3E%3C/g%3E%3C/svg%3E");
   }
 
   html {
@@ -205,6 +230,17 @@
     background-position: 0 0, 0 0;
   }
 
+  [data-paper='doodle'] .paper-sheet {
+    background-image: var(--doodle), var(--grain);
+    background-size: 240px 240px, 180px 180px;
+    background-attachment: local, scroll;
+  }
+  [data-paper='doodle'] .paper-login {
+    background-image: var(--doodle), var(--grain);
+    background-size: 240px 240px, 180px 180px;
+    background-position: 0 0, 0 0;
+  }
+
   /* Tiny swatches of each paper, for the settings screen. */
   .paper-preview {
     background-color: rgb(var(--paper));
@@ -223,6 +259,10 @@
       linear-gradient(rgb(var(--ink) / 0.28) 1px, transparent 1px),
       linear-gradient(90deg, rgb(var(--ink) / 0.28) 1px, transparent 1px);
     background-size: 10px 10px;
+  }
+  .paper-preview[data-style='doodle'] {
+    background-image: var(--doodle);
+    background-size: 60px 60px;
   }
 
   /* The side panel. Its own colours (--panel / --panel-fg) are swapped in for everything inside it,
@@ -245,6 +285,10 @@
   [data-palette='night'] .tape {
     mix-blend-mode: normal;
     background: rgb(var(--marker) / 0.7);
+  }
+  [data-palette='idol'] .tape {
+    mix-blend-mode: normal;
+    background: rgb(var(--isha) / 0.55);
   }
 
 
@@ -322,6 +366,34 @@
   [data-palette='night'][data-paper='grid'] .bubble {
     --tint: 0.2;
     border-color: rgb(var(--ink) / 0.4);
+  }
+
+  /* doodle: a hand-drawn sticker card — thick outline, warm cream face, gentle alternating tilt */
+  [data-paper='doodle'] .bubble {
+    --tint: 0.14;
+    border: 2px solid rgb(var(--ink) / 0.85);
+    border-radius: 1.1rem;
+    background-color: rgb(var(--paper-hi));
+    background-image: linear-gradient(rgb(var(--accent) / var(--tint)), rgb(var(--accent) / var(--tint)));
+    box-shadow: 3px 4px 0 rgb(var(--shade) / 0.9);
+  }
+  [data-paper='doodle'] article:nth-of-type(odd) .bubble {
+    transform: rotate(-1.1deg);
+  }
+  [data-paper='doodle'] article:nth-of-type(even) .bubble {
+    transform: rotate(1.1deg);
+  }
+  [data-paper='doodle'] .bubble.is-unsent {
+    transform: none !important;
+  }
+
+  /* A personal sticker, dropped in as /public/mascot-<username>.png, peeking from the bubble's corner.
+     Only shown on the Doodle paper — add the file yourself; nothing appears until it exists. */
+  .mascot-peek {
+    display: none;
+  }
+  [data-paper='doodle'] .mascot-peek {
+    display: block;
   }
 
   /* states */

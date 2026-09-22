@@ -93,7 +93,7 @@ export function SettingsDialog({ name, email, look, saveState, onLookChange, onC
                 <h3 id="paper-heading" className="font-display text-[1.15rem] italic">
                   Paper
                 </h3>
-                <div role="radiogroup" aria-labelledby="paper-heading" className="mt-3 grid grid-cols-3 gap-3">
+                <div role="radiogroup" aria-labelledby="paper-heading" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {PAPERS.map((paper) => {
                     const selected = look.paper === paper.id;
                     return (
@@ -129,7 +129,7 @@ export function SettingsDialog({ name, email, look, saveState, onLookChange, onC
                 <h3 id="ink-heading" className="font-display text-[1.15rem] italic">
                   Ink
                 </h3>
-                <div role="radiogroup" aria-labelledby="ink-heading" className="mt-3 grid grid-cols-5 gap-2.5">
+                <div role="radiogroup" aria-labelledby="ink-heading" className="mt-3 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
                   {PALETTES.map((palette) => {
                     const selected = look.palette === palette.id;
                     return (

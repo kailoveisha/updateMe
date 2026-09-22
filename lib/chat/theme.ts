@@ -6,6 +6,7 @@ export const PAPERS = [
   { id: 'dots', label: 'Dots', hint: 'Dot-grid journal' },
   { id: 'lines', label: 'Lines', hint: 'Ruled notebook' },
   { id: 'grid', label: 'Grid', hint: 'Graph paper' },
+  { id: 'doodle', label: 'Doodle', hint: 'Scribbles & stickers' },
 ] as const;
 
 export const PALETTES = [
@@ -14,6 +15,7 @@ export const PALETTES = [
   { id: 'forest', label: 'Forest', ink: '28 56 48', paper: '238 243 238' },
   { id: 'plum', label: 'Plum', ink: '58 33 72', paper: '243 240 245' },
   { id: 'night', label: 'Night', ink: '226 230 242', paper: '19 22 33' },
+  { id: 'idol', label: 'Fan Page', ink: '250 235 242', paper: '15 12 16' },
 ] as const;
 
 /** Colour of the phone's status bar / browser chrome for each palette. */
@@ -23,6 +25,7 @@ export const BROWSER_BAR: Record<string, string> = {
   forest: '#eef3ee',
   plum: '#f3f0f5',
   night: '#131621',
+  idol: '#0f0c10',
 };
 
 export type PaperId = (typeof PAPERS)[number]['id'];
