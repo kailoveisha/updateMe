@@ -279,6 +279,11 @@ export function useChat({ myId, initial, onSessionExpired }: UseChatArgs) {
       const row = await insertMessage(supabase, entry.payload);
       outbox.current.delete(id);
       dispatch({ type: 'merge', rows: [row] });
+      void fetch('/api/notifications/message', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ messageId: row.id }),
+      }).catch((error) => console.error('[v0] Message notification request failed:', error));
     } catch (error) {
       let failure: Failure = describeError(error);
 
